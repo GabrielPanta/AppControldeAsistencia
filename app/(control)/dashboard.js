@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 import { useAuth } from '../../context/auth';
@@ -41,6 +41,14 @@ export default function ControlDashboard() {
         setReports(sortedReports);
       } catch (error) {
         console.error("Error fetching reports:", error);
+        if (error.code === 'permission-denied') {
+          Alert.alert(
+            'Error de Permisos', 
+            'No tienes permisos suficientes para ver los reportes. Por favor, verifica las reglas de seguridad en la consola de Firebase o contacta al administrador.'
+          );
+        } else {
+          Alert.alert('Error', `Hubo un problema al cargar los reportes: ${error.message}`);
+        }
       } finally {
         setLoading(false);
       }
