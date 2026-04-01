@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 const OBSERVACIONES = [
-  "Sin observación",
   "Generó marcación",
   "Olvidó marcar",
   "Falta justificada",
@@ -100,27 +99,27 @@ function App() {
 // --- LOGIN VIEW ---
 function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900 p-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-12 rounded-[3.5rem] shadow-2xl w-full max-w-md border border-white/20">
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-slate-100">
         <div className="text-center mb-10">
-          <div className="w-24 h-24 bg-blue-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
+          <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
              <span className="text-5xl">🏢</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Asistencia Pro</h1>
-          <p className="text-slate-400 mt-3 font-semibold text-sm">GESTIÓN WEB INTEGRADA</p>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Asistencia <span className="text-blue-600">Web</span></h1>
+          <p className="text-slate-400 mt-3 font-semibold text-xs tracking-widest uppercase">Gestión Administrativa</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <input 
-            type="email" placeholder="Usuario" 
-            className="w-full px-6 py-4 rounded-3xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
+            type="email" placeholder="Email" 
+            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
             value={authEmail} onChange={e => setAuthEmail(e.target.value)} required 
           />
           <input 
             type="password" placeholder="Contraseña" 
-            className="w-full px-6 py-4 rounded-3xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
+            className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
             value={authPass} onChange={e => setAuthPass(e.target.value)} required 
           />
-          <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-3xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-2xl shadow-blue-500/20 uppercase tracking-widest text-xs">Ingresar</button>
+          <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20 uppercase tracking-widest text-xs">Ingresar</button>
         </form>
       </motion.div>
     </div>
@@ -130,9 +129,9 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
 // --- HEADER ---
 function Header({ userData, handleLogout }) {
   return (
-    <header className="bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-5 flex justify-between items-center sticky top-0 z-50">
+    <header className="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center sticky top-0 z-50">
       <div className="flex items-center gap-5">
-        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl">A</div>
+        <div className="relative w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl">A</div>
         <div>
           <h2 className="font-extrabold text-slate-900 text-lg">Asistencia Web</h2>
           <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">{userData?.role} • EMPRESA {userData?.companyId}</p>
@@ -164,7 +163,7 @@ function DashboardView({ userData, onSelectReport }) {
   useEffect(() => { fetchReports(); }, [userData]);
 
   const processFile = async (file) => {
-    if (!file || userData.role !== 'ENCARGADO') return;
+    if (!file || String(userData?.role || '').toUpperCase() !== 'ENCARGADO') return;
     try {
       setUploading(true);
       const data = await file.arrayBuffer();
@@ -217,20 +216,20 @@ function DashboardView({ userData, onSelectReport }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-      {userData?.role === 'ENCARGADO' && (
+      {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
         <div className="col-span-1">
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-             <h3 className="font-bold text-slate-800 mb-6 text-xl">Subida de Excel</h3>
+             <h3 className="font-bold text-slate-800 mb-6 text-xl tracking-tight">Subida de Excel</h3>
              <label className="block border-2 border-dashed border-slate-200 p-10 rounded-[2rem] text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group">
                 <Upload className="mx-auto mb-4 text-slate-300 group-hover:text-blue-500 transition-colors" size={40} />
-                <span className="block font-bold text-slate-500 group-hover:text-blue-600">Importar Archivo</span>
+                <span className="block font-bold text-slate-500 group-hover:text-blue-600 text-sm">Importar Archivo</span>
                 <input type="file" className="hidden" accept=".xlsx" onChange={e => processFile(e.target.files[0])} />
              </label>
              {uploading && <p className="mt-4 text-xs font-black text-blue-600 animate-pulse text-center">CARGANDO...</p>}
           </div>
         </div>
       )}
-      <div className={userData?.role === 'ENCARGADO' ? 'col-span-3' : 'col-span-4'}>
+      <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'col-span-3' : 'col-span-4'}>
          <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
             <h3 className="font-black text-2xl text-slate-900 mb-8 tracking-tighter">Historial de Reportes</h3>
             <div className="space-y-4">
@@ -242,7 +241,7 @@ function DashboardView({ userData, onSelectReport }) {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 text-lg">Reporte {r.date}</p>
-                      <p className="text-slate-400 text-xs font-semibold">ESTADO: <span className={r.status === 'OPEN' ? 'text-blue-600' : 'text-green-600'}>{r.status}</span></p>
+                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">ESTADO: <span className={r.status === 'OPEN' ? 'text-blue-600' : 'text-green-600'}>{r.status}</span></p>
                     </div>
                   </div>
                   <ChevronRight size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
@@ -329,6 +328,12 @@ function ReportTableView({ report, onBack, userData }) {
     });
   }, [tableColumns]);
 
+  const progress = useMemo(() => {
+    const total = people.length;
+    const completed = people.filter(p => !!p.respuestaObservacion).length;
+    return { total, completed, isAllDone: total > 0 && completed === total };
+  }, [people]);
+
   const filtered = useMemo(() => {
     return people.filter(p => {
       const matchSearch = p.nombreCompleto.toLowerCase().includes(search.toLowerCase()) || 
@@ -370,30 +375,48 @@ function ReportTableView({ report, onBack, userData }) {
     return val;
   };
 
+  const COL_WIDTHS = {
+    '#': 48,
+    'NOMBRE': 280,
+    'DNI': 100,
+    'CODIGO': 90,
+    'NOMBRE COMPLETO': 280,
+    'DEFAULT': 140
+  };
+
+  const getColWidth = (col) => {
+    const up = String(col || '').toUpperCase();
+    if (COL_WIDTHS[up]) return COL_WIDTHS[up];
+    if (up.includes('NOMBRE')) return COL_WIDTHS['NOMBRE'];
+    if (up.includes('DNI')) return COL_WIDTHS['DNI'];
+    if (up.includes('COD')) return COL_WIDTHS['CODIGO'];
+    return COL_WIDTHS['DEFAULT'];
+  };
+
   const stickyConfig = useMemo(() => {
-    let offset = 48; // El ancho de la columna "#"
+    let offset = COL_WIDTHS['#'];
     const stickySet = new Set(['#']);
     const offsets = { '#': 0 };
-    const widths = { '#': 48 };
+    const widths = { '#': COL_WIDTHS['#'] };
 
     let stopNext = false;
     tableColumns.forEach(pc => {
       if (stopNext) return;
-      const up = String(pc || '').toUpperCase();
+      const up = String(pc || '').trim().toUpperCase();
+      const w = getColWidth(pc);
       
-      let w = 110; // ancho default p/sticky
-      if (up.includes('NOMBRE')) w = 240;
-      else if (up.includes('DNI')) w = 95;
-      else if (up.includes('COD')) w = 90;
-      else if (up.includes('FECHA') && up.includes('INGRESO')) {
-        w = 120;
+      // Hacemos sticky solo a los identificadores principales.
+      // Si la columna NO es Nombre, ni DNI, ni Código, detenemos el sticky para que el resto pueda deslizarse.
+      if (!up.includes('NOMBRE') && !up.includes('DNI') && !up.includes('COD')) {
         stopNext = true;
       }
       
-      stickySet.add(pc);
-      offsets[pc] = offset;
-      widths[pc] = w;
-      offset += w;
+      if (!stopNext || (up.includes('NOMBRE') || up.includes('DNI') || up.includes('COD'))) {
+        stickySet.add(pc);
+        offsets[pc] = offset;
+        widths[pc] = w;
+        offset += w;
+      }
     });
 
     const lastCol = Array.from(stickySet).pop();
@@ -436,6 +459,7 @@ function ReportTableView({ report, onBack, userData }) {
     return Array.from(set).sort();
   }, [people, zonaColumn]);
 
+
   const updateRespuesta = async (pId, val) => {
     if (report.status === 'CLOSED') return;
     try {
@@ -477,177 +501,207 @@ function ReportTableView({ report, onBack, userData }) {
     }
   };
 
+  const handleDownloadExcel = () => {
+    try {
+      const exportHeaders = [...tableColumns, 'RESPUESTA OBSERVACIÓN'];
+      
+      const dataToExport = filtered.map(p => {
+        const row = {};
+        
+        // 1. Llenamos la fila respetando EXACTAMENTE el orden visual de tableColumns
+        tableColumns.forEach(col => {
+          row[col] = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] : (col === 'OBSERVACION' ? p.observacion : '');
+        });
+        
+        // 2. Añadimos la columna final
+        row['RESPUESTA OBSERVACIÓN'] = p.respuestaObservacion || 'PENDIENTE';
+        return row;
+      });
+
+      // 3. Forzamos a XLSX a respetar el orden de las columnas con la propiedad 'header'
+      const ws = XLSX.utils.json_to_sheet(dataToExport, { header: exportHeaders });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+      XLSX.writeFile(wb, `Reporte_Asistencia_${report.date.replace(/\//g, '_')}.xlsx`);
+    } catch (e) {
+      alert("Error al generar Excel: " + e.message);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-6 pb-20">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-         <div>
-           <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-bold hover:text-blue-600 mb-1 transition-all text-xs">
-             <ChevronLeft size={16} /> Volver
-           </button>
-           <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Reporte del {report.date}</h2>
-           <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-widest mt-1">EMPRESA: {report.companyId} • ESTADO: {report.status}</p>
-         </div>
-         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-              <input 
-                type="text" placeholder="Buscar trabajador..." 
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 text-xs"
-                value={search} onChange={e => setSearch(e.target.value)}
-              />
-            </div>
-
-            <div className="relative flex-1 sm:w-56">
-              <select 
-                value={filterObs} 
-                onChange={(e) => setFilterObs(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-xs"
-              >
-                <option value="Todas">Todas las Obs.</option>
-                {uniqueObservations.map(obs => (
-                  <option key={obs} value={obs}>{obs}</option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                <ChevronRight className="rotate-90" size={16} />
-              </div>
-            </div>
-
-            {rutaColumn && (
-              <div className="relative flex-1 sm:w-48">
-                <select 
-                  value={filterRuta} 
-                  onChange={(e) => setFilterRuta(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
-                >
-                  <option value="Todas">Todas las Rutas</option>
-                  {uniqueRutas.map(ruta => (
-                    <option key={ruta} value={ruta}>{ruta}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                  <ChevronRight className="rotate-90" size={16} />
-                </div>
-              </div>
-            )}
-
-            {zonaColumn && (
-              <div className="relative flex-1 sm:w-48">
-                <select 
-                  value={filterZona} 
-                  onChange={(e) => setFilterZona(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
-                >
-                  <option value="Todas">Todas las Zonas</option>
-                  {uniqueZonas.map(zona => (
-                    <option key={zona} value={zona}>{zona}</option>
-                  ))}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                  <ChevronRight className="rotate-90" size={16} />
-                </div>
-              </div>
-            )}
-            
-            {report.status === 'OPEN' && userData?.role === 'CONTROL' && (
-              <button 
-                onClick={handleClose} 
-                disabled={saving} 
-                className="bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="animate-spin" size={14} /> : <Lock size={14} />}
-                Cerrar Reporte
-              </button>
-            )}
-
-            <button 
-              onClick={handleDelete} 
-              disabled={saving} 
-              className="bg-red-50 text-red-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50 border border-red-100"
-            >
-              {saving ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
-              Eliminar Reporte
+          <div>
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-bold hover:text-blue-600 mb-1 transition-all text-xs">
+              <ChevronLeft size={16} /> Volver
             </button>
-         </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Reporte del {report.date}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-widest">EMPRESA: {report.companyId} • ESTADO: {report.status}</p>
+              <div className="h-1 w-1 rounded-full bg-slate-200"></div>
+              <p className="text-blue-500 text-[9px] font-black uppercase tracking-widest">ROL: {userData?.role || '---'}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 w-full lg:w-auto">
+            {/* Grupo de Filtros */}
+            <div className="flex flex-wrap items-center gap-2">
+               <div className="relative w-64">
+                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                 <input 
+                   type="text" placeholder="Buscar..." 
+                   className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 text-[10px]"
+                   value={search} onChange={e => setSearch(e.target.value)}
+                 />
+               </div>
+
+               <div className="relative w-40">
+                 <select 
+                   value={filterObs} 
+                   onChange={(e) => setFilterObs(e.target.value)}
+                   className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
+                 >
+                   <option value="Todas">Todas Obs.</option>
+                   {uniqueObservations.map(obs => (
+                     <option key={obs} value={obs}>{obs}</option>
+                   ))}
+                 </select>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                   <ChevronRight className="rotate-90" size={14} />
+                 </div>
+               </div>
+
+               {rutaColumn && (
+                 <div className="relative w-40">
+                   <select 
+                     value={filterRuta} 
+                     onChange={(e) => setFilterRuta(e.target.value)}
+                     className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
+                   >
+                     <option value="Todas">Ruta</option>
+                     {uniqueRutas.map(ruta => (
+                       <option key={ruta} value={ruta}>{ruta}</option>
+                     ))}
+                   </select>
+                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                     <ChevronRight className="rotate-90" size={14} />
+                   </div>
+                 </div>
+               )}
+
+               {zonaColumn && (
+                 <div className="relative w-40">
+                   <select 
+                     value={filterZona} 
+                     onChange={(e) => setFilterZona(e.target.value)}
+                     className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
+                   >
+                     <option value="Todas">Zona</option>
+                     {uniqueZonas.map(zona => (
+                       <option key={zona} value={zona}>{zona}</option>
+                     ))}
+                   </select>
+                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                     <ChevronRight className="rotate-90" size={14} />
+                   </div>
+                 </div>
+               )}
+            </div>
+
+            {/* Grupo de Acciones */}
+            <div className="flex items-center gap-3">
+               {report.status === 'OPEN' && (['CONTROL', 'ENCARGADO'].includes(String(userData?.role || '').toUpperCase())) && (
+                 <button 
+                   onClick={handleClose} 
+                   disabled={saving || !progress.isAllDone} 
+                   className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm flex-1 sm:flex-none ${progress.isAllDone ? 'bg-slate-900 text-white border-slate-900 hover:bg-blue-600' : 'bg-white text-slate-400 border-slate-200 cursor-not-allowed'}`}
+                 >
+                   {saving ? <Loader2 className="animate-spin" size={14} /> : (progress.isAllDone ? <Lock size={14} /> : <Clock size={14} />)}
+                   {progress.isAllDone ? 'Cerrar Reporte' : `Respuestas: ${progress.completed}/${progress.total}`}
+                 </button>
+               )}
+
+               <button 
+                 onClick={handleDownloadExcel} 
+                 className="bg-white text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm flex-1 sm:flex-none"
+               >
+                 <FileSpreadsheet size={14} />
+                 Descargar Excel
+               </button>
+
+               {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
+                 <button 
+                   onClick={handleDelete} 
+                   disabled={saving} 
+                   className="bg-white text-red-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 border border-red-100 shadow-sm flex-1 sm:flex-none"
+                 >
+                   {saving ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                   Eliminar
+                 </button>
+               )}
+            </div>
+          </div>
       </div>
-
-
       <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
          <div className="overflow-x-auto max-h-[75vh]">
             <table className="w-full text-left border-collapse table-fixed min-w-max">
                <thead className="bg-[#f8fafc] border-b border-slate-100 sticky top-0 z-40">
                   <tr>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-[#f8fafc] z-50 border-b border-slate-100" style={{ width: '48px' }}>#</th>
+                     <th className="px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-[#f8fafc] z-50 border-b border-r border-slate-100" style={{ width: `${COL_WIDTHS['#']}px` }}>#</th>
                      {tableColumns.map(col => {
                         const isSticky = stickyConfig.stickySet.has(col);
+                        const isLast = col === stickyConfig.lastCol;
+                        const w = getColWidth(col);
                         return (
                           <th 
                             key={col} 
-                            className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-[#f8fafc] z-50 border-b border-slate-100' : ''}`}
+                            className={`px-3 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-[#f8fafc] z-50 border-b border-slate-100' : ''} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
                             style={{ 
-                              width: stickyConfig.widths[col] || '140px',
-                              left: isSticky ? `${stickyConfig.offsets[col]}px` : undefined,
-                              boxShadow: isSticky && col === stickyConfig.lastCol ? '4px 0 6px -3px rgba(0,0,0,0.05)' : undefined
+                              left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
+                              width: `${w}px`,
+                              minWidth: `${w}px`
                             }}
                           >
-                            {col === 'NOMBRE' ? 'Trabajador' : col}
+                            {col}
                           </th>
                         );
                      })}
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px] w-[200px]">Respuesta Observacion</th>
+                     <th className="px-3 py-2 text-[9px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 sticky right-0 z-40 border-l border-blue-100" style={{ width: '220px' }}>Respuesta Observación</th>
                   </tr>
                </thead>
-
-               <tbody className="divide-y divide-slate-50">
+               <tbody className="bg-white">
                   {filtered.map((p, idx) => (
-                    <tr key={p.id} className="hover:bg-blue-50/20 transition-colors group">
-                        <td className="px-4 py-2 text-[10px] font-bold text-slate-300 sticky left-0 bg-white group-hover:bg-[#f8fafc] transition-colors z-30">{idx + 1}</td>
-                        {tableColumns.map(col => {
-                           const type = columnTypes[col];
-                           const isSticky = stickyConfig.stickySet.has(col);
-                           const val = p.datosExtra?.[col] ?? (
-                             type === 'NAME' ? p.nombreCompleto :
-                             type === 'DNI' ? p.dni :
-                             type === 'CODE' ? p.codigo :
-                             type === 'OBS' ? p.observacion : 
-                             ''
-                           );
-
-                           const baseTdClass = `px-4 py-2 ${isSticky ? 'sticky bg-white group-hover:bg-[#f8fafc] z-30 transition-colors' : ''}`;
-                           const stickyStyle = isSticky ? { 
-                             left: `${stickyConfig.offsets[col]}px`,
-                             boxShadow: col === stickyConfig.lastCol ? '4px 0 6px -3px rgba(0,0,0,0.05)' : undefined
-                           } : {};
-
-                           if (type === 'NAME') return (
-                              <td key={col} className={baseTdClass} style={stickyStyle}>
-                                <p className="font-bold text-slate-800 text-[11px] whitespace-nowrap overflow-hidden text-ellipsis">{val}</p>
-                              </td>
-                           );
-                           if (type === 'DNI' || type === 'CODE') return (
-                              <td key={col} className={baseTdClass} style={stickyStyle}>
-                                <p className="text-[9px] font-black text-slate-400 whitespace-nowrap">{type}: {val || '---'}</p>
-                              </td>
-                           );
-                           if (type === 'OBS') return (
-                              <td key={col} className={baseTdClass} style={stickyStyle}>
-                                 <p className="text-[9px] font-semibold text-slate-500 whitespace-nowrap italic overflow-hidden text-ellipsis">{val || '---'}</p>
-                              </td>
-                           );
-                           return (
-                              <td key={col} className={baseTdClass} style={stickyStyle}>
-                                <p className="text-[9px] font-semibold text-slate-600 whitespace-nowrap">{formatHora(col, val)}</p>
-                              </td>
-                           );
-                        })}
-                       <td className="px-4 py-2">
+                    <tr key={p.id} className="hover:bg-blue-50 transition-colors group">
+                      <td className="px-3 py-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 group-hover:bg-blue-50 sticky left-0 z-20 border-b border-r border-slate-100" style={{ width: `${COL_WIDTHS['#']}px` }}>{idx + 1}</td>
+                      {tableColumns.map(col => {
+                        const isSticky = stickyConfig.stickySet.has(col);
+                        const isLast = col === stickyConfig.lastCol;
+                        const w = getColWidth(col);
+                        const val = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] : (col === 'OBSERVACION' ? p.observacion : '');
+                        
+                        return (
+                          <td 
+                            key={col} 
+                            className={`px-3 py-1.5 text-[10px] font-medium text-slate-700 border-b ${isSticky ? 'sticky bg-white group-hover:bg-blue-50 z-20' : ''} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
+                            style={{ 
+                               left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
+                               width: `${w}px`,
+                               minWidth: `${w}px`
+                            }}
+                          >
+                            <span className="truncate block">{formatHora(col, val)}</span>
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-1.5 bg-white group-hover:bg-blue-50 sticky right-0 z-30 border-b border-l border-blue-100" style={{ width: '220px' }}>
                           <div className="relative">
                             <select 
-                              value={p.respuestaObservacion || 'Sin observación'} 
+                              value={p.respuestaObservacion || ''} 
                               onChange={(e) => updateRespuesta(p.id, e.target.value)}
                               disabled={report.status === 'CLOSED'}
-                              className={`w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 text-[10px] font-bold text-slate-700 focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all appearance-none cursor-pointer ${report.status === 'CLOSED' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}`}
+                              className={`w-full border rounded-md px-2 py-1 text-[10px] font-bold outline-none transition-all appearance-none cursor-pointer ${report.status === 'CLOSED' ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-500' : (!p.respuestaObservacion ? 'bg-red-50/30 border-red-100 text-red-500 hover:bg-red-50' : 'bg-slate-50 border-slate-100 text-slate-700 hover:bg-white')}`}
                             >
+                              <option value="" disabled>--- Seleccione ---</option>
                               {OBSERVACIONES.map(obs => (
                                 <option key={obs} value={obs}>{obs}</option>
                               ))}
