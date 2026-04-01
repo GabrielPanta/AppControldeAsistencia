@@ -188,16 +188,14 @@ function DashboardView({ userData, onSelectReport }) {
         uploadedBy: auth.currentUser.uid,
         status: 'OPEN',
         createdAt: new Date().toISOString(),
-        extraColumnsOrder: extraHeaders
+        columnOrder: headers // Guardamos el orden original completo
       });
 
       const promises = dataRows.map(row => {
         if (!row[nameI]) return;
         const datosExtra = {};
         headers.forEach((h, i) => {
-          if (i !== nameI && i !== dniI && i !== codI) {
-            datosExtra[h] = row[i] || '';
-          }
+          datosExtra[h] = row[i] || ''; // Guardamos TODAS las columnas aquí para fácil acceso por nombre
         });
 
         const currentObs = (obsI !== -1 && row[obsI]) ? String(row[obsI]) : 'Sin observación';
@@ -263,6 +261,7 @@ function ReportTableView({ report, onBack, userData }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterObs, setFilterObs] = useState('Todas');
+  const [filterRuta, setFilterRuta] = useState('Todas');
   const [saving, setSaving] = useState(false);
 
 
@@ -275,28 +274,69 @@ function ReportTableView({ report, onBack, userData }) {
     return unsub;
   }, [report.id]);
 
+  const tableColumns = useMemo(() => {
+    const allCols = [];
+    
+    // 1. Prioridad: Orden original guardado (Nuevos reportes)
+    if (report.columnOrder && report.columnOrder.length > 0) {
+      allCols.push(...report.columnOrder);
+    } else {
+      // 2. Fallback: Orden guardado de extras (Reportes intermedios)
+      const extra = report.extraColumnsOrder || [];
+      if (extra.length > 0) {
+        allCols.push('NOMBRE', 'DNI', 'CODIGO', ...extra, 'OBSERVACION');
+      } else {
+        // 3. Fallback total: Derivar de los datos de las personas (Reportes antiguos)
+        const keys = new Set();
+        people.forEach(p => {
+          if (p.datosExtra) {
+            Object.keys(p.datosExtra).forEach(k => keys.add(k));
+          }
+        });
+        allCols.push('NOMBRE', 'DNI', 'CODIGO', ...Array.from(keys), 'OBSERVACION');
+      }
+    }
+    
+    // Eliminar duplicados y valores vacíos para evitar errores de React key
+    return Array.from(new Set(allCols.filter(col => col && String(col).trim() !== '')));
+  }, [report.columnOrder, report.extraColumnsOrder, people]);
+
+  const columnTypes = useMemo(() => {
+    const types = {};
+    tableColumns.forEach(col => {
+      const up = String(col).toUpperCase();
+      if (up.includes('NOMBRE')) types[col] = 'NAME';
+      else if (up.includes('DNI')) types[col] = 'DNI';
+      else if (up.includes('COD')) types[col] = 'CODE';
+      else if (up.includes('OBSERV') || up.includes('SITUAC')) types[col] = 'OBS';
+      else types[col] = 'EXTRA';
+    });
+    return types;
+  }, [tableColumns]);
+
+  const rutaColumn = useMemo(() => {
+    return tableColumns.find(col => {
+      const c = String(col || '').toUpperCase().trim();
+      return c === 'RUTA' || c === 'RUTAS' || c.includes('RUTA');
+    });
+  }, [tableColumns]);
+
   const filtered = useMemo(() => {
     return people.filter(p => {
       const matchSearch = p.nombreCompleto.toLowerCase().includes(search.toLowerCase()) || 
                           p.dni.includes(search) || 
                           p.codigo?.includes(search);
-      const matchObs = filterObs === 'Todas' || p.observacion === filterObs;
-      return matchSearch && matchObs;
-    });
-  }, [people, search, filterObs]);
-
-  const extraColumns = useMemo(() => {
-    if (report.extraColumnsOrder && report.extraColumnsOrder.length > 0) {
-      return report.extraColumnsOrder;
-    }
-    const keys = new Set();
-    people.forEach(p => {
-      if (p.datosExtra) {
-        Object.keys(p.datosExtra).forEach(k => keys.add(k));
+      const matchObs = filterObs === 'Todas' || String(p.observacion || '').trim() === filterObs;
+      
+      let matchRuta = true;
+      if (rutaColumn && filterRuta !== 'Todas') {
+        const val = String(p.datosExtra?.[rutaColumn] || '').trim();
+        matchRuta = val === filterRuta;
       }
+
+      return matchSearch && matchObs && matchRuta;
     });
-    return Array.from(keys);
-  }, [people, report.extraColumnsOrder]);
+  }, [people, search, filterObs, filterRuta, rutaColumn]);
 
   const formatHora = (colName, val) => {
     if (!val) return '---';
@@ -316,16 +356,58 @@ function ReportTableView({ report, onBack, userData }) {
     return val;
   };
 
+  const stickyConfig = useMemo(() => {
+    let offset = 48; // El ancho de la columna "#"
+    const stickySet = new Set(['#']);
+    const offsets = { '#': 0 };
+    const widths = { '#': 48 };
+
+    let stopNext = false;
+    tableColumns.forEach(pc => {
+      if (stopNext) return;
+      const up = String(pc || '').toUpperCase();
+      
+      let w = 110; // ancho default p/sticky
+      if (up.includes('NOMBRE')) w = 240;
+      else if (up.includes('DNI')) w = 95;
+      else if (up.includes('COD')) w = 90;
+      else if (up.includes('FECHA') && up.includes('INGRESO')) {
+        w = 120;
+        stopNext = true;
+      }
+      
+      stickySet.add(pc);
+      offsets[pc] = offset;
+      widths[pc] = w;
+      offset += w;
+    });
+
+    const lastCol = Array.from(stickySet).pop();
+    return { stickySet, offsets, widths, lastCol };
+  }, [tableColumns]);
+
   const uniqueObservations = useMemo(() => {
     const set = new Set();
     people.forEach(p => {
       if (p.observacion && p.observacion.trim() !== '') {
-        set.add(p.observacion);
+        set.add(p.observacion.trim());
       }
     });
     return Array.from(set).sort();
   }, [people]);
 
+  const uniqueRutas = useMemo(() => {
+    if (!rutaColumn) return [];
+    const set = new Set();
+    people.forEach(p => {
+      const val = p.datosExtra?.[rutaColumn];
+      if (val !== undefined && val !== null) {
+        const strVal = String(val).trim();
+        if (strVal !== '') set.add(strVal);
+      }
+    });
+    return Array.from(set).sort();
+  }, [people, rutaColumn]);
 
   const updateRespuesta = async (pId, val) => {
     if (report.status === 'CLOSED') return;
@@ -403,6 +485,24 @@ function ReportTableView({ report, onBack, userData }) {
                 <ChevronRight className="rotate-90" size={16} />
               </div>
             </div>
+
+            {rutaColumn && (
+              <div className="relative flex-1 sm:w-56">
+                <select 
+                  value={filterRuta} 
+                  onChange={(e) => setFilterRuta(e.target.value)}
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-xs"
+                >
+                  <option value="Todas">Todas las Rutas</option>
+                  {uniqueRutas.map(ruta => (
+                    <option key={ruta} value={ruta}>{ruta}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                  <ChevronRight className="rotate-90" size={16} />
+                </div>
+              </div>
+            )}
             
             {report.status === 'OPEN' && userData?.role === 'CONTROL' && (
               <button 
@@ -429,39 +529,72 @@ function ReportTableView({ report, onBack, userData }) {
 
       <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
          <div className="overflow-x-auto max-h-[75vh]">
-            <table className="w-full text-left border-collapse">
-               <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-20">
+            <table className="w-full text-left border-collapse table-fixed min-w-max">
+               <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-40">
                   <tr>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest w-12">#</th>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Trabajador</th>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Identificación</th>
-                     {extraColumns.map(col => (
-                        <th key={col} className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">{col}</th>
-                     ))}
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[150px]">OBSERVACION (EXCEL)</th>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Respuesta Observacion</th>
+                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-10" style={{ width: '48px' }}>#</th>
+                     {tableColumns.map(col => {
+                        const isSticky = stickyConfig.stickySet.has(col);
+                        return (
+                          <th 
+                            key={col} 
+                            className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-slate-50 z-10' : ''}`}
+                            style={{ 
+                              width: stickyConfig.widths[col] || '140px',
+                              left: isSticky ? `${stickyConfig.offsets[col]}px` : undefined,
+                              boxShadow: isSticky && col === stickyConfig.lastCol ? '4px 0 6px -3px rgba(0,0,0,0.05)' : undefined
+                            }}
+                          >
+                            {col === 'NOMBRE' ? 'Trabajador' : col}
+                          </th>
+                        );
+                     })}
+                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px] w-[200px]">Respuesta Observacion</th>
                   </tr>
                </thead>
 
                <tbody className="divide-y divide-slate-50">
                   {filtered.map((p, idx) => (
-                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                       <td className="px-4 py-2 text-[10px] font-bold text-slate-300">{idx + 1}</td>
-                       <td className="px-4 py-2">
-                          <p className="font-bold text-slate-800 text-[11px] whitespace-nowrap overflow-hidden text-ellipsis max-w-xs">{p.nombreCompleto}</p>
-                       </td>
-                       <td className="px-4 py-2">
-                          <p className="text-[9px] font-black text-slate-400 whitespace-nowrap">DNI: {p.dni || '---'}</p>
-                          <p className="text-[9px] font-bold text-slate-300">CÓD: {p.codigo || '---'}</p>
-                       </td>
-                       {extraColumns.map(col => (
-                          <td key={col} className="px-4 py-2 text-[9px] font-semibold text-slate-600 whitespace-nowrap">
-                             {formatHora(col, p.datosExtra?.[col])}
-                          </td>
-                       ))}
-                       <td className="px-4 py-2 text-[9px] font-semibold text-slate-500 whitespace-nowrap italic">
-                          {p.observacion || '---'}
-                       </td>
+                    <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
+                        <td className="px-4 py-2 text-[10px] font-bold text-slate-300 sticky left-0 bg-white group-hover:bg-blue-50/50 transition-colors z-10">{idx + 1}</td>
+                        {tableColumns.map(col => {
+                           const type = columnTypes[col];
+                           const isSticky = stickyConfig.stickySet.has(col);
+                           const val = p.datosExtra?.[col] ?? (
+                             type === 'NAME' ? p.nombreCompleto :
+                             type === 'DNI' ? p.dni :
+                             type === 'CODE' ? p.codigo :
+                             type === 'OBS' ? p.observacion : 
+                             ''
+                           );
+
+                           const baseTdClass = `px-4 py-2 ${isSticky ? 'sticky bg-white group-hover:bg-blue-50/50 z-10 transition-colors' : ''}`;
+                           const stickyStyle = isSticky ? { 
+                             left: `${stickyConfig.offsets[col]}px`,
+                             boxShadow: col === stickyConfig.lastCol ? '4px 0 6px -3px rgba(0,0,0,0.05)' : undefined
+                           } : {};
+
+                           if (type === 'NAME') return (
+                              <td key={col} className={baseTdClass} style={stickyStyle}>
+                                <p className="font-bold text-slate-800 text-[11px] whitespace-nowrap overflow-hidden text-ellipsis">{val}</p>
+                              </td>
+                           );
+                           if (type === 'DNI' || type === 'CODE') return (
+                              <td key={col} className={baseTdClass} style={stickyStyle}>
+                                <p className="text-[9px] font-black text-slate-400 whitespace-nowrap">{type}: {val || '---'}</p>
+                              </td>
+                           );
+                           if (type === 'OBS') return (
+                              <td key={col} className={baseTdClass} style={stickyStyle}>
+                                 <p className="text-[9px] font-semibold text-slate-500 whitespace-nowrap italic overflow-hidden text-ellipsis">{val || '---'}</p>
+                              </td>
+                           );
+                           return (
+                              <td key={col} className={baseTdClass} style={stickyStyle}>
+                                <p className="text-[9px] font-semibold text-slate-600 whitespace-nowrap">{formatHora(col, val)}</p>
+                              </td>
+                           );
+                        })}
                        <td className="px-4 py-2">
                           <div className="relative">
                             <select 
@@ -470,7 +603,7 @@ function ReportTableView({ report, onBack, userData }) {
                               disabled={report.status === 'CLOSED'}
                               className={`w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-1.5 text-[10px] font-bold text-slate-700 focus:ring-4 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all appearance-none cursor-pointer ${report.status === 'CLOSED' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white'}`}
                             >
-                              {Array.from(new Set([...OBSERVACIONES, p.observacion])).filter(Boolean).map(obs => (
+                              {OBSERVACIONES.map(obs => (
                                 <option key={obs} value={obs}>{obs}</option>
                               ))}
                             </select>
