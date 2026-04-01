@@ -262,6 +262,7 @@ function ReportTableView({ report, onBack, userData }) {
   const [search, setSearch] = useState('');
   const [filterObs, setFilterObs] = useState('Todas');
   const [filterRuta, setFilterRuta] = useState('Todas');
+  const [filterZona, setFilterZona] = useState('Todas');
   const [saving, setSaving] = useState(false);
 
 
@@ -321,6 +322,13 @@ function ReportTableView({ report, onBack, userData }) {
     });
   }, [tableColumns]);
 
+  const zonaColumn = useMemo(() => {
+    return tableColumns.find(col => {
+      const c = String(col || '').toUpperCase().trim();
+      return c === 'ZONA' || c === 'ZONAS' || c.includes('ZONA');
+    });
+  }, [tableColumns]);
+
   const filtered = useMemo(() => {
     return people.filter(p => {
       const matchSearch = p.nombreCompleto.toLowerCase().includes(search.toLowerCase()) || 
@@ -334,9 +342,15 @@ function ReportTableView({ report, onBack, userData }) {
         matchRuta = val === filterRuta;
       }
 
-      return matchSearch && matchObs && matchRuta;
+      let matchZona = true;
+      if (zonaColumn && filterZona !== 'Todas') {
+        const val = String(p.datosExtra?.[zonaColumn] || '').trim();
+        matchZona = val === filterZona;
+      }
+
+      return matchSearch && matchObs && matchRuta && matchZona;
     });
-  }, [people, search, filterObs, filterRuta, rutaColumn]);
+  }, [people, search, filterObs, filterRuta, filterZona, rutaColumn, zonaColumn]);
 
   const formatHora = (colName, val) => {
     if (!val) return '---';
@@ -408,6 +422,19 @@ function ReportTableView({ report, onBack, userData }) {
     });
     return Array.from(set).sort();
   }, [people, rutaColumn]);
+
+  const uniqueZonas = useMemo(() => {
+    if (!zonaColumn) return [];
+    const set = new Set();
+    people.forEach(p => {
+      const val = p.datosExtra?.[zonaColumn];
+      if (val !== undefined && val !== null) {
+        const strVal = String(val).trim();
+        if (strVal !== '') set.add(strVal);
+      }
+    });
+    return Array.from(set).sort();
+  }, [people, zonaColumn]);
 
   const updateRespuesta = async (pId, val) => {
     if (report.status === 'CLOSED') return;
@@ -487,15 +514,33 @@ function ReportTableView({ report, onBack, userData }) {
             </div>
 
             {rutaColumn && (
-              <div className="relative flex-1 sm:w-56">
+              <div className="relative flex-1 sm:w-48">
                 <select 
                   value={filterRuta} 
                   onChange={(e) => setFilterRuta(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-xs"
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
                 >
                   <option value="Todas">Todas las Rutas</option>
                   {uniqueRutas.map(ruta => (
                     <option key={ruta} value={ruta}>{ruta}</option>
+                  ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                  <ChevronRight className="rotate-90" size={16} />
+                </div>
+              </div>
+            )}
+
+            {zonaColumn && (
+              <div className="relative flex-1 sm:w-48">
+                <select 
+                  value={filterZona} 
+                  onChange={(e) => setFilterZona(e.target.value)}
+                  className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
+                >
+                  <option value="Todas">Todas las Zonas</option>
+                  {uniqueZonas.map(zona => (
+                    <option key={zona} value={zona}>{zona}</option>
                   ))}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
@@ -530,15 +575,15 @@ function ReportTableView({ report, onBack, userData }) {
       <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
          <div className="overflow-x-auto max-h-[75vh]">
             <table className="w-full text-left border-collapse table-fixed min-w-max">
-               <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-40">
+               <thead className="bg-[#f8fafc] border-b border-slate-100 sticky top-0 z-40">
                   <tr>
-                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-10" style={{ width: '48px' }}>#</th>
+                     <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-[#f8fafc] z-50 border-b border-slate-100" style={{ width: '48px' }}>#</th>
                      {tableColumns.map(col => {
                         const isSticky = stickyConfig.stickySet.has(col);
                         return (
                           <th 
                             key={col} 
-                            className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-slate-50 z-10' : ''}`}
+                            className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-[#f8fafc] z-50 border-b border-slate-100' : ''}`}
                             style={{ 
                               width: stickyConfig.widths[col] || '140px',
                               left: isSticky ? `${stickyConfig.offsets[col]}px` : undefined,
@@ -555,8 +600,8 @@ function ReportTableView({ report, onBack, userData }) {
 
                <tbody className="divide-y divide-slate-50">
                   {filtered.map((p, idx) => (
-                    <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
-                        <td className="px-4 py-2 text-[10px] font-bold text-slate-300 sticky left-0 bg-white group-hover:bg-blue-50/50 transition-colors z-10">{idx + 1}</td>
+                    <tr key={p.id} className="hover:bg-blue-50/20 transition-colors group">
+                        <td className="px-4 py-2 text-[10px] font-bold text-slate-300 sticky left-0 bg-white group-hover:bg-[#f8fafc] transition-colors z-30">{idx + 1}</td>
                         {tableColumns.map(col => {
                            const type = columnTypes[col];
                            const isSticky = stickyConfig.stickySet.has(col);
@@ -568,7 +613,7 @@ function ReportTableView({ report, onBack, userData }) {
                              ''
                            );
 
-                           const baseTdClass = `px-4 py-2 ${isSticky ? 'sticky bg-white group-hover:bg-blue-50/50 z-10 transition-colors' : ''}`;
+                           const baseTdClass = `px-4 py-2 ${isSticky ? 'sticky bg-white group-hover:bg-[#f8fafc] z-30 transition-colors' : ''}`;
                            const stickyStyle = isSticky ? { 
                              left: `${stickyConfig.offsets[col]}px`,
                              boxShadow: col === stickyConfig.lastCol ? '4px 0 6px -3px rgba(0,0,0,0.05)' : undefined
