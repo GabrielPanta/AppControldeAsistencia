@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle,
-  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2
+  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick
 } from 'lucide-react';
 
 const OBSERVACIONES = [
@@ -274,6 +274,7 @@ function ReportTableView({ report, onBack, userData }) {
   const [filterObs, setFilterObs] = useState('Todas');
   const [filterRuta, setFilterRuta] = useState('Todas');
   const [filterZona, setFilterZona] = useState('Todas');
+  const [filterDigitacion, setFilterDigitacion] = useState('Todas');
   const [saving, setSaving] = useState(false);
 
 
@@ -340,6 +341,13 @@ function ReportTableView({ report, onBack, userData }) {
     });
   }, [tableColumns]);
 
+  const digitacionColumn = useMemo(() => {
+    return tableColumns.find(col => {
+      const c = String(col || '').toUpperCase().trim();
+      return c.includes('DIGITACION');
+    });
+  }, [tableColumns]);
+
   const progress = useMemo(() => {
     const total = people.length;
     const completed = people.filter(p => !!p.respuestaObservacion).length;
@@ -365,9 +373,21 @@ function ReportTableView({ report, onBack, userData }) {
         matchZona = val === filterZona;
       }
 
-      return matchSearch && matchObs && matchRuta && matchZona;
+      const matchDigitacion = filterDigitacion === 'Todas' || (() => {
+        const val = digitacionColumn
+          ? String(p.datosExtra?.[digitacionColumn] || '').toUpperCase().trim()
+          : String(p.observacion || '').toUpperCase();
+
+        if (filterDigitacion === 'SI') {
+          return val.startsWith('S') || val.includes('DIGITACION');
+        } else {
+          return val.startsWith('N') || (val === '' && !digitacionColumn) || (digitacionColumn && !val.startsWith('S'));
+        }
+      })();
+
+      return matchSearch && matchObs && matchRuta && matchZona && matchDigitacion;
     });
-  }, [people, search, filterObs, filterRuta, filterZona, rutaColumn, zonaColumn]);
+  }, [people, search, filterObs, filterRuta, filterZona, filterDigitacion, rutaColumn, zonaColumn, digitacionColumn]);
 
   const formatHora = (colName, val) => {
     if (!val) return '---';
@@ -565,6 +585,21 @@ function ReportTableView({ report, onBack, userData }) {
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 text-[10px]"
                 value={search} onChange={e => setSearch(e.target.value)}
               />
+            </div>
+
+            <div className="relative w-40">
+              <select
+                value={filterDigitacion}
+                onChange={(e) => setFilterDigitacion(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 appearance-none cursor-pointer text-[10px]"
+              >
+                <option value="Todas">Digitación: Todas</option>
+                <option value="SI">Digitación: SI</option>
+                <option value="NO">Digitación: NO</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                <ChevronRight className="rotate-90" size={14} />
+              </div>
             </div>
 
             <div className="relative w-40">
