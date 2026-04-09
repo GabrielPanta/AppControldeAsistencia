@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
@@ -47,60 +47,78 @@ export default function LoginScreen() {
   };
 
   return (
-    <View className="flex-1 bg-white justify-center px-8">
-      <View className="items-center mb-10">
-        <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center mb-4">
-          <Text className="text-4xl">🏢</Text>
-        </View>
-        <Text className="text-3xl font-extrabold text-gray-900 tracking-tight">Bienvenido</Text>
-        <Text className="text-base text-gray-500 mt-2 text-center">
-          Ingresa para gestionar la asistencia
-        </Text>
-      </View>
-
-      <View className="space-y-4">
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1">Correo Electrónico</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-800 focus:border-blue-500 focus:bg-white transition-colors"
-            placeholder="ejemplo@empresa.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1 mt-4">Contraseña</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-800 focus:border-blue-500 focus:bg-white transition-colors"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-        </View>
-
-        <TouchableOpacity 
-          onPress={handleLogin}
-          disabled={loading}
-          className={`w-full py-4 rounded-xl mt-6 flex-row justify-center items-center shadow-sm shadow-blue-200 ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+    <View className="flex-1 bg-slate-50">
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        className="flex-1"
+      >
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
+          className="flex-1"
+          keyboardShouldPersistTaps="handled"
         >
-          {loading ? (
-             <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white text-center font-bold text-lg">Iniciar Sesión</Text>
-          )}
-        </TouchableOpacity>
+          <View className="bg-white px-8 py-12 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <View className="items-center mb-10">
+              <View className="w-20 h-20 bg-blue-50 rounded-[1.5rem] items-center justify-center mb-6 border border-blue-100">
+                <Text className="text-3xl">🏢</Text>
+              </View>
+              <Text className="text-4xl font-black text-slate-800 tracking-tighter leading-none">Bienvenido</Text>
+              <Text className="text-[10px] font-black text-slate-400 mt-4 uppercase tracking-[2px] text-center">
+                Ingresa para gestionar asistencia
+              </Text>
+            </View>
 
-        <View className="flex-row justify-center mt-6">
-          <Text className="text-gray-500">¿No tienes cuenta? </Text>
-          <TouchableOpacity onPress={() => router.push('/register')}>
-            <Text className="text-blue-600 font-semibold">Regístrate aquí</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <View className="space-y-5">
+              <View>
+                <Text className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest pl-1">Correo Electrónico</Text>
+                <TextInput
+                  className="w-full h-14 bg-slate-50 border border-slate-200 rounded-2xl px-5 text-base text-slate-800 focus:border-blue-500 focus:bg-white transition-all shadow-none"
+                  placeholder="admin@empresa.com"
+                  placeholderTextColor="#94a3b8"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+              </View>
+
+              <View>
+                <Text className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest pl-1">Contraseña</Text>
+                <TextInput
+                  className="w-full h-14 bg-slate-50 border border-slate-200 rounded-2xl px-5 text-base text-slate-800 focus:border-blue-500 focus:bg-white transition-all shadow-none"
+                  placeholder="••••••••"
+                  placeholderTextColor="#94a3b8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                />
+              </View>
+
+              <TouchableOpacity 
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.8}
+                className={`w-full h-14 rounded-2xl mt-4 flex-row justify-center items-center shadow-md shadow-blue-200 ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+              >
+                {loading ? (
+                   <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-black text-lg tracking-tight">Iniciar Sesión</Text>
+                )}
+              </TouchableOpacity>
+
+              <View className="flex-row justify-center items-center mt-8">
+                <Text className="text-slate-400 text-xs font-semibold tracking-tight">¿No tienes cuenta? </Text>
+                <TouchableOpacity onPress={() => router.push('/register')}>
+                  <Text className="text-blue-500 font-black text-xs tracking-tight">Regístrate aquí</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

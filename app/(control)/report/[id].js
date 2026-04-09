@@ -1,82 +1,203 @@
-import React, { useState, useEffect, memo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, FlatList } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, FlatList, Modal } from 'react-native';
 import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-const OBSERVACIONES = [
-  "Sin observación",
-  "Generó marcación",
+const RESPUESTAS_OPTIONS = [
+  "Indicó Generar Marcación",
   "Olvidó marcar",
-  "Falta justificada",
+  "Ausente",
   "Tardanza",
-  "Permiso"
+  "Permiso",
+  "Canje",
+  "Otro"
 ];
 
-const WorkerCard = memo(({ person, index, updatePersonObservation }) => {
-  const [expanded, setExpanded] = useState(false);
+const STYLES_COMPLETION = {
+  active: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", accent: "bg-blue-500" },
+  pending: { bg: "bg-slate-50", text: "text-slate-400", border: "border-slate-100", accent: "bg-slate-200" }
+};
 
+const FilterChip = ({ icon, label, value, onPress }) => {
+  const isActive = value !== 'Todas';
   return (
-    <View className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4">
-      {/* Cabecera compacta: Indice y Nombre (Tappeable para expandir) */}
-      <TouchableOpacity 
-        activeOpacity={0.7} 
-        onPress={() => setExpanded(!expanded)}
-        className="flex-row items-center mb-2"
-      >
-        <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3">
-            <Text className="text-blue-800 font-bold text-xs">{index + 1}</Text>
-        </View>
-        <View className="flex-1">
-          <Text className="text-base font-bold text-gray-800" numberOfLines={1}>{person.nombreCompleto}</Text>
-          <Text className="text-xs text-gray-500 mt-0.5">
-            DNI: {person.dni || 'N/A'} • Cód: {person.codigo || 'N/A'}
-          </Text>
-        </View>
-        <View className="bg-gray-50 px-2 py-1 rounded-full border border-gray-100">
-           <Text className="text-xs text-gray-500 font-medium">{expanded ? '▲' : '▼'}</Text>
-        </View>
-      </TouchableOpacity>
+    <TouchableOpacity 
+      onPress={onPress}
+      activeOpacity={0.7}
+      className={`flex-row items-center px-4 py-2.5 rounded-2xl border ${isActive ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'}`}
+    >
+      <Text className="mr-2 text-xs">{icon}</Text>
+      <Text className={`text-[10px] font-black uppercase tracking-tight ${isActive ? 'text-white' : 'text-slate-500'}`}>
+        {isActive ? `${label}: ${value}` : label}
+      </Text>
+      {!isActive && <Text className="ml-2 text-slate-300 text-[10px]">▼</Text>}
+    </TouchableOpacity>
+  );
+};
 
-      {/* Contenido Expandible (Datos del Excel) */}
-      {expanded && person.datosExtra && Object.keys(person.datosExtra).length > 0 && (
-        <View className="bg-gray-50 rounded-xl p-3 mt-2 border border-gray-100 flex-row flex-wrap">
-          {Object.entries(person.datosExtra).map(([key, value]) => (
-            <View key={key} className="w-1/2 flex-col mb-1.5 pr-2">
-              <Text className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{key}</Text>
-              <Text className="text-xs font-medium text-gray-800 mt-0.5" numberOfLines={2}>{value}</Text>
-            </View>
-          ))}
+const FilterModal = ({ visible, title, options, selectedValue, onSelect, onClose }) => (
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <View className="flex-1 bg-black/40 justify-end">
+      <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1" />
+      <View className="bg-white rounded-t-[2.5rem] p-8 max-h-[70%] shadow-2xl">
+        <View className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
+        <View className="flex-row justify-between items-center mb-8">
+          <Text className="text-2xl font-black text-slate-800 tracking-tighter">{title}</Text>
+          <TouchableOpacity onPress={onClose} className="bg-slate-100 w-10 h-10 rounded-full items-center justify-center">
+            <Text className="text-slate-400 font-bold text-sm">✕</Text>
+          </TouchableOpacity>
         </View>
-      )}
-
-      {/* Alerta del sistema en caso de haberla */}
-      {person.respuestaObservacion ? (
-        <View className="bg-red-50 p-2 rounded-lg mt-2 border border-red-100">
-          <Text className="text-xs text-red-600 font-medium">⚠️ Obs. Sistema: {person.respuestaObservacion}</Text>
-        </View>
-      ) : null}
-      
-      {/* Botones de Observación Compactos */}
-      <View className="mt-3">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-1">
-          {OBSERVACIONES.map(obs => {
-            const isSelected = person.observacion === obs;
-            return (
-               <TouchableOpacity
-                 key={obs}
-                 onPress={() => updatePersonObservation(person.id, obs)}
-                 className={`mx-1 px-3 py-1.5 rounded-full border ${isSelected ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-200' : 'bg-gray-50 border-gray-200'}`}
-               >
-                 <Text className={`text-xs ${isSelected ? 'text-white font-bold' : 'text-gray-600 font-medium'}`}>
-                   {obs}
-                 </Text>
-               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <FlatList
+          data={options}
+          keyExtractor={item => item}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => onSelect(item)}
+              className={`py-5 px-6 rounded-2xl mb-3 flex-row justify-between items-center ${selectedValue === item ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-slate-50 border border-slate-100/50'}`}
+            >
+              <Text className={`text-[15px] font-black tracking-tight ${selectedValue === item ? 'text-white' : 'text-slate-700'}`}>{item}</Text>
+              {selectedValue === item && <Text className="text-white text-lg">✓</Text>}
+            </TouchableOpacity>
+          )}
+        />
       </View>
     </View>
+  </Modal>
+);
+
+const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, options }) => {
+  const [showPicker, setShowPicker] = useState(false);
+  if (!person) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/60 justify-end">
+        <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1" />
+        <View className="bg-white rounded-t-[3rem] p-8 max-h-[92%] shadow-2xl">
+          <View className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
+
+          <View className="flex-row justify-between items-start mb-6">
+            <View className="flex-1 pr-6">
+              <Text className="text-sm font-black text-blue-600 uppercase tracking-widest mb-1.5">Ficha del Trabajador</Text>
+              <Text className="text-2xl font-black text-slate-900 leading-tight mb-2 tracking-tight">{person.nombreCompleto}</Text>
+              <View className="flex-row items-center bg-slate-50 self-start px-3 py-1.5 rounded-xl border border-slate-100">
+                <Text className="text-[11px] font-black text-slate-500 uppercase tracking-wider">DNI: {person.dni || '---'}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={onClose} className="bg-slate-100 w-12 h-12 rounded-2xl items-center justify-center">
+              <Text className="text-slate-400 font-bold text-lg">✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
+            {/* Observation from EXCEL as Reference */}
+            <View className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 mb-8">
+              <View className="flex-row items-center gap-2 mb-2">
+                <Text className="text-sm">📋</Text>
+                <Text className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Observación del Excel (Referencia)</Text>
+              </View>
+              <Text className="text-sm text-amber-700 font-bold leading-relaxed">{person.observacion || 'Sin observación'}</Text>
+            </View>
+
+            <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Seleccionar Respuesta</Text>
+
+            {/* Combobox Style Selection */}
+            <TouchableOpacity
+              onPress={() => setShowPicker(true)}
+              activeOpacity={0.7}
+              className={`flex-row justify-between items-center p-5 rounded-2xl mb-8 border ${person.respuestaObservacion ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}
+            >
+              <View className="flex-1">
+                {person.respuestaObservacion ? (
+                  <Text className="text-[15px] font-black text-blue-600 tracking-tight">{person.respuestaObservacion}</Text>
+                ) : (
+                  <Text className="text-[15px] font-bold text-slate-300">Seleccionar respuesta...</Text>
+                )}
+              </View>
+              <Text className="text-slate-300 text-lg">▼</Text>
+            </TouchableOpacity>
+
+            <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Información Adicional</Text>
+            <View className="bg-slate-50/50 rounded-[2rem] p-6 border border-slate-100">
+              {person.datosExtra && Object.entries(person.datosExtra).map(([key, value], idx) => (
+                <View key={key} className={`pb-4 mb-4 ${idx !== Object.keys(person.datosExtra).length - 1 ? 'border-b border-slate-200/30' : ''}`}>
+                  <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{key}</Text>
+                  <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity
+            onPress={onClose}
+            className="w-full bg-slate-900 py-6 rounded-3xl flex-row justify-center items-center shadow-xl shadow-slate-300"
+          >
+            <Text className="text-white font-black uppercase tracking-widest text-[10px]">Cerrar Detalle</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <FilterModal
+        visible={showPicker}
+        title="Seleccionar Respuesta"
+        options={options}
+        selectedValue={person.respuestaObservacion}
+        onSelect={(val) => { onSelectRespuesta(person.id, val); setShowPicker(false); }}
+        onClose={() => setShowPicker(false)}
+      />
+    </Modal>
+  );
+};
+
+const WorkerCard = memo(({ person, index, onSelectRespuesta, options }) => {
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  const isComplete = !!person.respuestaObservacion;
+  const style = isComplete ? STYLES_COMPLETION.active : STYLES_COMPLETION.pending;
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => setShowDetailModal(true)}
+      className="bg-white rounded-[1.8rem] shadow-sm border border-slate-100 mb-3 overflow-hidden flex-row min-h-[80px]"
+    >
+      <View className={`w-1.5 ${style.accent}`} />
+
+      <View className="flex-1 p-4 flex-row items-center justify-between">
+        <View className="flex-row items-center flex-1">
+          <View className="w-10 h-10 rounded-2xl items-center justify-center mr-4 bg-slate-50 border border-slate-100">
+            <Text className="font-black text-[10px] text-slate-400">#{index + 1}</Text>
+          </View>
+
+          <View className="flex-1 pr-2">
+            <Text className="text-[15px] font-black text-slate-800 tracking-tight leading-tight" numberOfLines={1}>
+              {person.nombreCompleto}
+            </Text>
+            <Text className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">DNI: {person.dni || '---'}</Text>
+          </View>
+        </View>
+
+        {isComplete ? (
+          <View className="bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
+            <Text className="text-[9px] font-black text-blue-600 uppercase">REVISADO</Text>
+          </View>
+        ) : (
+          <View className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+            <Text className="text-[9px] font-black text-slate-300 uppercase">PENDIENTE</Text>
+          </View>
+        )}
+      </View>
+
+      <WorkerDetailModal
+        visible={showDetailModal}
+        person={person}
+        onClose={() => setShowDetailModal(false)}
+        onSelectRespuesta={onSelectRespuesta}
+        options={options}
+      />
+    </TouchableOpacity>
   );
 });
 
@@ -93,6 +214,17 @@ export default function ReportDetailScreen() {
   const [availableZonas, setAvailableZonas] = useState([]);
   const [selectedRuta, setSelectedRuta] = useState('Todas');
   const [selectedZona, setSelectedZona] = useState('Todas');
+  const [selectedDigitacion, setSelectedDigitacion] = useState('Todas');
+  const [selectedObsFilter, setSelectedObsFilter] = useState('Todas');
+
+  const [search, setSearch] = useState('');
+  const [showRutaModal, setShowRutaModal] = useState(false);
+  const [showZonaModal, setShowZonaModal] = useState(false);
+  const [showDigitacionModal, setShowDigitacionModal] = useState(false);
+  const [showObsFilterModal, setShowObsFilterModal] = useState(false);
+
+  const [digitacionColumn, setDigitacionColumn] = useState(null);
+  const [zonaColumn, setZonaColumn] = useState(null);
 
   const router = useRouter();
 
@@ -100,10 +232,9 @@ export default function ReportDetailScreen() {
     const fetchReportData = async () => {
       try {
         setLoading(true);
-        // 1. Get report metadata
         const reportRef = doc(db, 'reports', id);
         const reportSnap = await getDoc(reportRef);
-        
+
         if (reportSnap.exists()) {
           setReport({ id: reportSnap.id, ...reportSnap.data() });
         } else {
@@ -112,41 +243,41 @@ export default function ReportDetailScreen() {
           return;
         }
 
-        // 2. Get people
         const peopleRef = collection(db, `reports/${id}/people`);
         const peopleSnap = await getDocs(peopleRef);
         const peopleList = peopleSnap.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-          // Si no tiene observación previa o está vacía, le ponemos la primera por defecto
           observacion: doc.data().observacion || "Sin observación"
         }));
-        
+
         setPeople(peopleList);
         setFilteredPeople(peopleList);
 
-        // 3. Extraer valores únicos de rutas y zonas para los filtros
         const rutasSet = new Set();
         const zonasSet = new Set();
 
         peopleList.forEach(p => {
-           if (p.datosExtra) {
-              // Buscar keys que coincidan con "ruta" o "zona" de forma general (case-insensitive)
-              Object.keys(p.datosExtra).forEach(key => {
-                 const upperKey = key.toUpperCase();
-                 if (upperKey.includes('RUTA') || upperKey.includes('BUS')) {
-                    const val = p.datosExtra[key]?.trim();
-                    if (val) rutasSet.add(val);
-                 }
-                 if (upperKey.includes('ZONA') || upperKey.includes('FUNDO')) {
-                    const val = p.datosExtra[key]?.trim();
-                    if (val) zonasSet.add(val);
-                 }
-              });
-           }
+          if (p.datosExtra) {
+            Object.keys(p.datosExtra).forEach(key => {
+              const upperKey = key.toUpperCase().trim();
+              if (upperKey.includes('RUTA') || upperKey.includes('BUS')) {
+                const val = p.datosExtra[key]?.trim();
+                if (val) rutasSet.add(val);
+              }
+              if (upperKey.includes('ZONA') || upperKey.includes('FUNDO')) {
+                const val = p.datosExtra[key]?.trim();
+                if (val) zonasSet.add(val);
+                setZonaColumn(key);
+              }
+              if (upperKey.includes('DIGITACION')) {
+                setDigitacionColumn(key);
+              }
+            });
+          }
         });
 
-        const sortedRutas = Array.from(rutasSet).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+        const sortedRutas = Array.from(rutasSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         const sortedZonas = Array.from(zonasSet).sort();
 
         setAvailableRutas(['Todas', ...sortedRutas]);
@@ -154,14 +285,7 @@ export default function ReportDetailScreen() {
 
       } catch (error) {
         console.error("Error fetching detail:", error);
-        if (error.code === 'permission-denied') {
-          Alert.alert(
-            'Error de Permisos', 
-            'No tienes permisos suficientes para ver este reporte. Por favor, verifica las reglas de seguridad en la consola de Firebase.'
-          );
-        } else {
-          Alert.alert('Error', `No se pudo cargar el detalle del reporte: ${error.message}`);
-        }
+        Alert.alert('Error', `No se pudo cargar el detalle del reporte: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -171,35 +295,66 @@ export default function ReportDetailScreen() {
     if (id) fetchReportData();
   }, [id]);
 
-  const updatePersonObservation = (personId, newValue) => {
-    setPeople(prev => prev.map(p => 
-      p.id === personId ? { ...p, observacion: newValue } : p
+  const uniqueObservations = useMemo(() => {
+    const set = new Set();
+    people.forEach(p => {
+      if (p.observacion) set.add(p.observacion.trim());
+    });
+    return Array.from(set).sort();
+  }, [people]);
+
+  const updatePersonRespuesta = (personId, newValue) => {
+    setPeople(prev => prev.map(p =>
+      p.id === personId ? { ...p, respuestaObservacion: newValue } : p
     ));
-    setFilteredPeople(prev => prev.map(p => 
-      p.id === personId ? { ...p, observacion: newValue } : p
+    setFilteredPeople(prev => prev.map(p =>
+      p.id === personId ? { ...p, respuestaObservacion: newValue } : p
     ));
   };
 
-  // Lógica de filtrado
   useEffect(() => {
-     let result = people;
+    let result = people;
 
-     if (selectedRuta !== 'Todas') {
-        result = result.filter(p => {
-           if (!p.datosExtra) return false;
-           return Object.entries(p.datosExtra).some(([key, val]) => (key.toUpperCase().includes('RUTA') || key.toUpperCase().includes('BUS')) && val?.trim() === selectedRuta);
-        });
-     }
+    if (search && search.trim() !== '') {
+      const s = search.toLowerCase();
+      result = result.filter(p =>
+        p.nombreCompleto.toLowerCase().includes(s) ||
+        (p.dni && p.dni.includes(s)) ||
+        (p.codigo && p.codigo.includes(s))
+      );
+    }
 
-     if (selectedZona !== 'Todas') {
-        result = result.filter(p => {
-           if (!p.datosExtra) return false;
-           return Object.entries(p.datosExtra).some(([key, val]) => (key.toUpperCase().includes('ZONA') || key.toUpperCase().includes('FUNDO')) && val?.trim() === selectedZona);
-        });
-     }
+    if (selectedRuta !== 'Todas') {
+      result = result.filter(p => {
+        if (!p.datosExtra) return false;
+        return Object.entries(p.datosExtra).some(([key, val]) => (key.toUpperCase().includes('RUTA') || key.toUpperCase().includes('BUS')) && val?.trim() === selectedRuta);
+      });
+    }
 
-     setFilteredPeople(result);
-  }, [selectedRuta, selectedZona, people]);
+    if (selectedZona !== 'Todas') {
+      result = result.filter(p => {
+        if (!p.datosExtra) return false;
+        return Object.entries(p.datosExtra).some(([key, val]) => (key.toUpperCase().includes('ZONA') || key.toUpperCase().includes('FUNDO')) && val?.trim() === selectedZona);
+      });
+    }
+
+    if (selectedDigitacion !== 'Todas' && digitacionColumn) {
+      result = result.filter(p => {
+        const val = String(p.datosExtra?.[digitacionColumn] || '').toUpperCase().trim();
+        if (selectedDigitacion === 'SI') {
+          return val.startsWith('S') || val.includes('DIGITACION');
+        } else {
+          return val.startsWith('N') || val === '';
+        }
+      });
+    }
+
+    if (selectedObsFilter !== 'Todas') {
+      result = result.filter(p => p.observacion === selectedObsFilter);
+    }
+
+    setFilteredPeople(result);
+  }, [selectedRuta, selectedZona, selectedDigitacion, selectedObsFilter, search, people, digitacionColumn]);
 
   const handleCerrarReporte = async () => {
     Alert.alert(
@@ -207,21 +362,18 @@ export default function ReportDetailScreen() {
       "¿Estás seguro de cerrar este reporte? Una vez cerrado no se podrán modificar las observaciones.",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Sí, Cerrar", 
+        {
+          text: "Sí, Cerrar",
           style: "destructive",
           onPress: async () => {
             try {
               setSaving(true);
-              
-              // 1. Update all people observations
               const updatePromises = people.map(p => {
                 const pRef = doc(db, `reports/${id}/people`, p.id);
-                return updateDoc(pRef, { observacion: p.observacion });
+                return updateDoc(pRef, { respuestaObservacion: p.respuestaObservacion });
               });
               await Promise.all(updatePromises);
 
-              // 2. Mark report as CLOSED
               const reportRef = doc(db, 'reports', id);
               await updateDoc(reportRef, { status: 'CLOSED' });
 
@@ -243,90 +395,147 @@ export default function ReportDetailScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text className="mt-4 text-gray-500">Cargando personal...</Text>
+        <Text className="mt-4 text-gray-500 font-bold">Cargando personal...</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white p-6 pt-12 border-b border-gray-200 shadow-sm z-10">
-        <TouchableOpacity onPress={() => router.back()} className="mb-4">
-          <Text className="text-blue-600 font-semibold text-base flex-row items-center">← Volver</Text>
-        </TouchableOpacity>
-        <Text className="text-2xl font-bold text-gray-900">Reporte del {report?.date}</Text>
-        <View className="flex-row items-center mt-2 mb-4">
-          <Text className="text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-md text-sm">
-            Total Trabajadores: {filteredPeople.length} / {people.length}
-          </Text>
+    <View className="flex-1 bg-white">
+      {/* Header Compacto y Organizado */}
+      <View className="bg-white pt-12 border-b border-slate-100 z-10 shadow-sm">
+        <View className="px-6 pb-4 flex-row items-center justify-between">
+           <View className="flex-row items-center flex-1 pr-4">
+              <TouchableOpacity onPress={() => router.back()} className="mr-4">
+                 <Text className="text-xl text-blue-600">←</Text>
+              </TouchableOpacity>
+              <View>
+                 <Text className="text-lg font-black text-slate-900 tracking-tighter" numberOfLines={1}>Reporte {report?.date}</Text>
+                 <Text className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ID: {id?.slice(-8).toUpperCase()}</Text>
+              </View>
+           </View>
+           <View className="bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+              <Text className="text-[10px] font-black text-blue-600">
+                 {Math.round((people.filter(p => !!p.respuestaObservacion).length / people.length) * 100)}%
+              </Text>
+           </View>
         </View>
 
-        {/* Filters Section */}
-        {availableRutas.length > 1 && (
-           <View className="mb-3">
-              <Text className="text-xs font-bold text-gray-500 mb-1.5 uppercase">Filtrar por Ruta:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-1">
-                 {availableRutas.map(ruta => (
-                    <TouchableOpacity 
-                      key={ruta} 
-                      onPress={() => setSelectedRuta(ruta)}
-                      className={`mx-1 px-4 py-2 rounded-full border ${selectedRuta === ruta ? 'bg-blue-600 border-blue-700 shadow-sm' : 'bg-white border-gray-200'}`}
-                    >
-                       <Text className={`text-sm ${selectedRuta === ruta ? 'text-white font-bold' : 'text-gray-700 font-medium'}`}>{ruta}</Text>
-                    </TouchableOpacity>
-                 ))}
-              </ScrollView>
-           </View>
-        )}
+        {/* Micro Barra de Progreso */}
+        <View className="h-[2px] w-full bg-slate-100">
+           <View 
+              className="h-full bg-blue-600 shadow-sm shadow-blue-300" 
+              style={{ width: `${(people.filter(p => !!p.respuestaObservacion).length / people.length) * 100}%` }} 
+           />
+        </View>
 
-        {availableZonas.length > 1 && (
-           <View>
-              <Text className="text-xs font-bold text-gray-500 mb-1.5 uppercase">Filtrar por Zona:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row -mx-1">
-                 {availableZonas.map(zona => (
-                    <TouchableOpacity 
-                      key={zona} 
-                      onPress={() => setSelectedZona(zona)}
-                      className={`mx-1 px-4 py-2 rounded-full border ${selectedZona === zona ? 'bg-blue-600 border-blue-700 shadow-sm' : 'bg-white border-gray-200'}`}
-                    >
-                       <Text className={`text-sm ${selectedZona === zona ? 'text-white font-bold' : 'text-gray-700 font-medium'}`}>{zona}</Text>
-                    </TouchableOpacity>
-                 ))}
-              </ScrollView>
+        {/* Acción: Buscador y Filtros */}
+        <View className="py-4">
+           {/* Buscador Slim */}
+           <View className="px-6 mb-4">
+              <View className="bg-slate-50 flex-row items-center px-5 py-3 rounded-2xl border border-slate-100">
+                 <Text className="mr-3 text-base">🔍</Text>
+                 <TextInput 
+                   className="flex-1 text-sm text-slate-800 font-bold"
+                   placeholder="Nombre, DNI o Código..."
+                   value={search}
+                   onChangeText={setSearch}
+                   placeholderTextColor="#cbd5e1"
+                 />
+              </View>
            </View>
-         )}
+
+           {/* Chips de Filtro Horizontal */}
+           <ScrollView 
+             horizontal 
+             showsHorizontalScrollIndicator={false} 
+             contentContainerStyle={{ paddingHorizontal: 24, gap: 10 }}
+           >
+              <FilterChip 
+                 icon="🚌" label="Ruta" value={selectedRuta} 
+                 onPress={() => setShowRutaModal(true)} 
+              />
+              <FilterChip 
+                 icon="🏡" label="Zona" value={selectedZona} 
+                 onPress={() => setShowZonaModal(true)} 
+              />
+              <FilterChip 
+                 icon="⌨️" label="Digitación" value={selectedDigitacion} 
+                 onPress={() => setShowDigitacionModal(true)} 
+              />
+              <FilterChip 
+                 icon="📋" label="Observación" value={selectedObsFilter} 
+                 onPress={() => setShowObsFilterModal(true)} 
+              />
+           </ScrollView>
+        </View>
+
+        {/* Modales Compartidos */}
+        <FilterModal visible={showRutaModal} title="Filtrar por Ruta" options={availableRutas} selectedValue={selectedRuta} onSelect={(val) => { setSelectedRuta(val); setShowRutaModal(false); }} onClose={() => setShowRutaModal(false)} />
+        <FilterModal visible={showZonaModal} title="Filtrar por Zona" options={availableZonas} selectedValue={selectedZona} onSelect={(val) => { setSelectedZona(val); setShowZonaModal(false); }} onClose={() => setShowZonaModal(false)} />
+        <FilterModal visible={showDigitacionModal} title="Filtrar por Digitación" options={['Todas', 'SI', 'NO']} selectedValue={selectedDigitacion} onSelect={(val) => { setSelectedDigitacion(val); setShowDigitacionModal(false); }} onClose={() => setShowDigitacionModal(false)} />
+        <FilterModal visible={showObsFilterModal} title="Filtrar por Observación (Excel)" options={['Todas', ...uniqueObservations]} selectedValue={selectedObsFilter} onSelect={(val) => { setSelectedObsFilter(val); setShowObsFilterModal(false); }} onClose={() => setShowObsFilterModal(false)} />
       </View>
 
       <FlatList
         data={filteredPeople}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 18, paddingBottom: 150 }}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
-        removeClippedSubviews={true}
+        removeClippedSubviews={false}
+        ListEmptyComponent={() => (
+          <View className="items-center justify-center py-20 px-10">
+            <View className="bg-slate-50 w-24 h-24 rounded-full items-center justify-center mb-6">
+              <Text className="text-4xl text-slate-300">👥</Text>
+            </View>
+            <Text className="text-lg font-black text-slate-800 text-center mb-2">No se encontraron trabajadores</Text>
+            <Text className="text-sm text-slate-400 text-center leading-relaxed">
+              Intenta ajustar los filtros o el buscador para encontrar lo que necesitas.
+            </Text>
+            {(search || selectedRuta !== 'Todas' || selectedZona !== 'Todas' || selectedDigitacion !== 'Todas' || selectedObsFilter !== 'Todas') && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearch('');
+                  setSelectedRuta('Todas');
+                  setSelectedZona('Todas');
+                  setSelectedDigitacion('Todas');
+                  setSelectedObsFilter('Todas');
+                }}
+                className="mt-8 bg-blue-600 px-8 py-3.5 rounded-2xl shadow-lg shadow-blue-100"
+              >
+                <Text className="text-white font-black uppercase text-[10px] tracking-widest">Limpiar Filtros</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
         renderItem={({ item, index }) => (
-           <WorkerCard 
-             person={item} 
-             index={index} 
-             updatePersonObservation={updatePersonObservation} 
-           />
+          <WorkerCard
+            person={item}
+            index={index}
+            onSelectRespuesta={updatePersonRespuesta}
+            options={RESPUESTAS_OPTIONS}
+          />
         )}
       />
+
       {/* Floating Action Button for Closing Report */}
-      <View className="absolute bottom-0 w-full p-6 bg-white border-t border-gray-100">
-        <TouchableOpacity 
+      <View className="absolute bottom-0 w-full px-8 py-8 bg-white/90 border-t border-slate-100">
+        <TouchableOpacity
           onPress={handleCerrarReporte}
           disabled={saving}
-          className={`w-full py-4 rounded-xl flex-row justify-center items-center shadow-lg ${saving ? 'bg-red-400' : 'bg-red-600 shadow-red-200'}`}
+          activeOpacity={0.8}
+          className={`w-full py-5 rounded-[2rem] flex-row justify-center items-center shadow-2xl ${saving ? 'bg-slate-400' : 'bg-rose-600 shadow-rose-200'}`}
         >
           {saving ? (
-             <ActivityIndicator color="white" />
+            <ActivityIndicator color="white" />
           ) : (
-             <Text className="text-white font-bold text-lg text-center">🔒 Guardar y Cerrar Reporte</Text>
+            <Text className="text-white font-black text-xs text-center uppercase tracking-widest">🔒 Guardar y Finalizar</Text>
           )}
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+

@@ -26,7 +26,7 @@ export default function ControlDashboard() {
         const q = query(
           collection(db, 'reports'),
           where('companyId', '==', userData.companyId),
-          where('status', '==', 'OPEN')
+          where('status', 'in', ['OPEN', 'ABIERTO'])
         );
 
         const querySnapshot = await getDocs(q);

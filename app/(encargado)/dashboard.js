@@ -259,6 +259,7 @@ export default function EncargadoDashboard() {
             date: reportDate,
             uploadedBy: auth.currentUser?.uid || 'Unknown',
             status: 'OPEN',
+            columnOrder: headers,
             createdAt: new Date().toISOString()
           });
 
@@ -291,7 +292,7 @@ export default function EncargadoDashboard() {
               dni: dniIndex !== -1 ? String(row[dniIndex] || '') : '',
               codigo: codeIndex !== -1 ? String(row[codeIndex] || '') : '',
               datosExtra: datosExtra,
-              observacion: '',
+              observacion: 'Sin observación',
               respuestaObservacion: ''
             });
           });

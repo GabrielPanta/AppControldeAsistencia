@@ -197,7 +197,7 @@ function DashboardView({ userData, onSelectReport }) {
         companyId: userData.companyId,
         date: reportDate,
         uploadedBy: auth.currentUser.uid,
-        status: 'ABIERTO',
+        status: 'OPEN',
         createdAt: new Date().toISOString(),
         columnOrder: headers // Guardamos el orden original completo
       });
@@ -523,7 +523,7 @@ function ReportTableView({ report, onBack, userData }) {
     if (!confirm("¿Deseas cerrar permanentemente este reporte?")) return;
     try {
       setSaving(true);
-      await updateDoc(doc(db, 'reports', report.id), { status: 'CERRADO' });
+      await updateDoc(doc(db, 'reports', report.id), { status: 'CLOSED' });
       alert("Reporte Cerrado.");
       onBack();
     } catch (e) {
