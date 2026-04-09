@@ -17,6 +17,15 @@ const excelDateToJSDate = (excelDate) => {
   return new Date(dateObj.getTime() + localOffsetInMs);
 };
 
+// Función para formatear fecha a DD/MM/YYYY de forma manual (evita problemas de locale)
+const formatDateToES = (date) => {
+  if (!(date instanceof Date) || isNaN(date)) return String(date);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export default function EncargadoDashboard() {
   const { userData, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -177,10 +186,10 @@ export default function EncargadoDashboard() {
           const dniIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('DNI'));
           const codeIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('CODIGO'));
           const dateIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('FECHA'));
-          let reportDate = new Date().toLocaleDateString('es-ES');
+          let reportDate = formatDateToES(new Date());
           if (dateIndex !== -1 && rows[0] && rows[0][dateIndex]) {
              const rawDate = rows[0][dateIndex];
-             reportDate = typeof rawDate === 'number' ? excelDateToJSDate(rawDate).toLocaleDateString('es-ES') : String(rawDate);
+             reportDate = typeof rawDate === 'number' ? formatDateToES(excelDateToJSDate(rawDate)) : String(rawDate);
           }
           const reportRef = await addDoc(collection(db, 'reports'), {
             companyId: userData.companyId || 'N/A',
@@ -284,7 +293,10 @@ export default function EncargadoDashboard() {
         contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-indigo-500/5 border border-slate-100 mb-8">
+        <View 
+          style={{ borderRadius: 40 }}
+          className="bg-white p-8 shadow-2xl shadow-indigo-500/5 border border-slate-100 mb-8"
+        >
           <Text className="text-xl font-black text-slate-900 mb-2 tracking-tighter">Subir Reporte</Text>
           <Text className="text-slate-400 mb-8 text-xs font-medium leading-4">
             Selecciona el Excel para extraer la información diaria.
@@ -314,7 +326,11 @@ export default function EncargadoDashboard() {
              </View>
           ) : (
             reports.map((item) => (
-              <View key={item.id} className="bg-slate-50 p-6 rounded-[2.5rem] flex-row justify-between items-center mb-5 border border-slate-100/50 shadow-sm">
+              <View 
+                key={item.id} 
+                style={{ borderRadius: 32 }}
+                className="bg-slate-50 p-6 flex-row justify-between items-center mb-5 border border-slate-100/50 shadow-sm"
+              >
                  <View className="flex-1">
                     <View className="flex-row items-center mb-1">
                        <View className={`w-1.5 h-1.5 rounded-full ${item.status === 'CLOSED' ? 'bg-emerald-500' : 'bg-indigo-600'} mr-2`} />

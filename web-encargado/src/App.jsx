@@ -431,7 +431,15 @@ function DashboardView({ userData, onSelectReport }) {
       const obsI = headers.findIndex(h => String(h).toUpperCase().includes('OBSERV') || String(h).toUpperCase().includes('SITUAC'));
       const fechaI = headers.findIndex(h => String(h).toUpperCase().includes('FECHA'));
 
-      let reportDate = new Date().toLocaleDateString('es-ES');
+      const formatDateToES = (date) => {
+        if (!(date instanceof Date) || isNaN(date)) return String(date);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      let reportDate = formatDateToES(new Date());
       if (fechaI !== -1) {
         const firstValidRow = dataRows.find(row => row[nameI] && row[fechaI]);
         if (firstValidRow) {

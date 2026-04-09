@@ -77,14 +77,18 @@ export default function ControlDashboard() {
     const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
     return (
-      <TouchableOpacity
-        onPress={() => router.push(`/(control)/report/${item.id}`)}
-        activeOpacity={0.7}
-        className="bg-white p-6 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-slate-100/50 mb-5 overflow-hidden"
-      >
-        <View className="flex-row justify-between items-center mb-5">
-          <View className="flex-row items-center flex-1">
-            <View className="w-16 h-16 bg-indigo-50 rounded-[1.8rem] items-center justify-center mr-5 border border-indigo-100/50">
+    <TouchableOpacity
+      onPress={() => router.push(`/(control)/report/${item.id}`)}
+      activeOpacity={0.7}
+      style={{ borderRadius: 32 }}
+      className="bg-white p-6 shadow-2xl shadow-indigo-500/5 border border-slate-100/50 mb-5 overflow-hidden"
+    >
+      <View className="flex-row justify-between items-center mb-5">
+        <View className="flex-row items-center flex-1">
+          <View 
+            style={{ borderRadius: 24 }}
+            className="w-16 h-16 bg-indigo-50 items-center justify-center mr-5 border border-indigo-100/50"
+          >
               <Text className="text-3xl">📂</Text>
             </View>
             <View className="flex-1">
@@ -172,7 +176,10 @@ export default function ControlDashboard() {
 
         {/* Widgets Estadísticos con Iconografía */}
         <View className="flex-row gap-4">
-          <View className="flex-1 bg-indigo-600 p-7 rounded-[2.5rem] shadow-2xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden relative">
+          <View 
+            style={{ borderRadius: 40 }}
+            className="flex-1 bg-indigo-600 p-7 shadow-2xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden relative"
+          >
             {/* Background Glow Effect */}
             <View className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full" />
 
@@ -188,7 +195,10 @@ export default function ControlDashboard() {
             </View>
           </View>
 
-          <View className="flex-1 bg-slate-950 p-7 rounded-[2.5rem] shadow-2xl shadow-slate-950/20 border border-slate-900 overflow-hidden relative">
+          <View 
+            style={{ borderRadius: 40 }}
+            className="flex-1 bg-slate-950 p-7 shadow-2xl shadow-slate-950/20 border border-slate-900 overflow-hidden relative"
+          >
             {/* Background Glow Effect */}
             <View className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full" />
 
@@ -220,7 +230,10 @@ export default function ControlDashboard() {
             <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-[10px]">Actualizando datos...</Text>
           </View>
         ) : reports.length === 0 ? (
-          <View className="bg-white p-10 rounded-[2.5rem] border border-slate-100 items-center justify-center mt-4 shadow-sm">
+          <View 
+            style={{ borderRadius: 40 }}
+            className="bg-white p-10 border border-slate-100 items-center justify-center mt-4 shadow-sm"
+          >
             <View className="w-20 h-20 bg-green-50 rounded-full items-center justify-center mb-6">
               <Text className="text-4xl">✨</Text>
             </View>
