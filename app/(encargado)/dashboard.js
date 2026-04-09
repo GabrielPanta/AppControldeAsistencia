@@ -221,7 +221,7 @@ export default function EncargadoDashboard() {
     }
   };
 
-  const isAdmin = (auth.currentUser?.email || userData?.email)?.toLowerCase() === 'gpanta@verfrut.pe';
+  const isAdmin = (auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe';
 
   return (
     <View className="flex-1 bg-slate-50">
@@ -231,15 +231,22 @@ export default function EncargadoDashboard() {
       <View className="px-6 pt-12 pb-10 bg-white border-b border-slate-100 shadow-sm rounded-b-[3.5rem] z-10">
          <View className="flex-row justify-between items-center mb-8">
             <View className="flex-row items-center">
-               <View className="w-12 h-12 bg-indigo-600 rounded-full items-center justify-center shadow-lg shadow-indigo-200">
-                  <Text className="text-white font-black text-lg">
-                    {userData?.name ? userData.name.charAt(0).toUpperCase() : 'E'}
-                  </Text>
+               <View className="relative">
+                 <View className="w-14 h-14 bg-indigo-100 rounded-2xl items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                   <Text className="text-2xl">👤</Text>
+                 </View>
+                 <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white" />
                </View>
                <View className="ml-4">
-                  <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Encargado</Text>
-                  <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>
-                    {userData?.name || 'Usuario'}
+                  <View className="flex-row items-center mb-0.5">
+                    <Text className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mr-2">En Línea</Text>
+                    <View className="h-[1px] w-4 bg-indigo-100" />
+                  </View>
+                  <Text className="text-2xl font-black text-slate-950 tracking-tighter leading-none" numberOfLines={1}>
+                    {userData?.name ? userData.name.split(' ')[0] : 'Encargado'}
+                  </Text>
+                  <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
+                    {userData?.role || 'Personal'} • {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'}
                   </Text>
                </View>
             </View>
