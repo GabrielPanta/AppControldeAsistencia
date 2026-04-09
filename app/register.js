@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { auth, db, firebaseConfig } from '../firebaseConfig';
+import { initializeApp } from 'firebase/app';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState(''); // 'ENCARGADO' or 'CONTROL'
-  const [company, setCompany] = useState(''); // '9' or '14'
+  const [role, setRole] = useState('CONTROL'); // Default to CONTROL
+  const [company, setCompany] = useState('14'); // Default to Verfrut
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
@@ -21,26 +22,37 @@ export default function RegisterScreen() {
       return;
     }
 
+    const isAdmin = (auth.currentUser?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe';
+    if (!isAdmin) {
+      Alert.alert('Acceso Denegado', 'Solo el administrador maestro puede registrar nuevos usuarios.');
+      return;
+    }
+
+    // Using a secondary app instance to create user without kicking admin out (same pattern as web)
     try {
       setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       
-      // Save extra user info to Firestore
+      const secondaryApp = initializeApp(firebaseConfig, "SecondaryAppRegister");
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
+      
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         name: name.trim(),
         role: role,
         companyId: company,
         createdAt: new Date().toISOString()
       });
 
-      // Auto login will happen due to AuthContext listener, but we can navigate manually 
-      if (role === 'ENCARGADO') {
-        router.replace('/(encargado)/dashboard');
-      } else {
-        router.replace('/(control)/dashboard');
-      }
+      await signOut(secondaryAuth);
+      // No standard way to delete app in RN directly without potential issues, but we can just leave it or try:
+      // await secondaryApp.delete();
+
+      Alert.alert('Éxito', 'Usuario creado correctamente.', [
+        { text: 'Aceptar', onPress: () => router.back() }
+      ]);
 
     } catch (error) {
       console.error(error);
@@ -51,112 +63,126 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white" contentContainerStyle={{ padding: 32, paddingBottom: 64 }}>
-      <TouchableOpacity onPress={() => router.back()} className="mb-4">
-        <Text className="text-gray-500 font-medium">← Volver al login</Text>
-      </TouchableOpacity>
-
-      <Text className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2 mt-4">Crea una cuenta</Text>
-      <Text className="text-base text-gray-500 mb-8">
-        Regístrate para comenzar a gestionar el control de asistencia.
-      </Text>
-
-      <View className="space-y-4">
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-1">Nombre Completo</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-800 focus:border-blue-500"
-            placeholder="Juan Perez"
-            value={name}
-            onChangeText={setName}
-          />
-        </View>
-
-        <View className="mt-4">
-          <Text className="text-sm font-medium text-gray-700 mb-1">Correo Electrónico</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-800 focus:border-blue-500"
-            placeholder="ejemplo@empresa.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View className="mt-4">
-          <Text className="text-sm font-medium text-gray-700 mb-1">Contraseña</Text>
-          <TextInput
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-800 focus:border-blue-500"
-            placeholder="Mínimo 6 caracteres"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-        </View>
-
-        <View className="mt-6 mb-2">
-          <Text className="text-sm font-bold text-gray-800 mb-3">SELECCIONA TU ROL</Text>
-          <View className="flex-row">
-            <TouchableOpacity 
-              onPress={() => setRole('ENCARGADO')}
-              className={`flex-1 py-3 px-2 rounded-lg border flex-row justify-center items-center mr-2 
-                ${role === 'ENCARGADO' ? 'bg-blue-50 border-blue-500' : 'bg-white border-gray-200'}`}
-            >
-              <Text className={`font-semibold text-center ${role === 'ENCARGADO' ? 'text-blue-700' : 'text-gray-600'}`}>
-                Encargado
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => setRole('CONTROL')}
-              className={`flex-1 py-3 px-2 rounded-lg border flex-row justify-center items-center ml-2
-                ${role === 'CONTROL' ? 'bg-purple-50 border-purple-500' : 'bg-white border-gray-200'}`}
-            >
-              <Text className={`font-semibold text-center ${role === 'CONTROL' ? 'text-purple-700' : 'text-gray-600'}`}>
-                Control
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View className="mt-6 mb-4">
-          <Text className="text-sm font-bold text-gray-800 mb-3">SELECCIONA LA EMPRESA</Text>
-          <View className="flex-row">
-            <TouchableOpacity 
-              onPress={() => setCompany('9')}
-              className={`flex-1 py-3 px-2 rounded-lg border flex-row justify-center items-center mr-2
-                ${company === '9' ? 'bg-green-50 border-green-500' : 'bg-white border-gray-200'}`}
-             >
-              <Text className={`font-semibold text-center ${company === '9' ? 'text-green-700' : 'text-gray-600'}`}>
-                Rapel (9)
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => setCompany('14')}
-              className={`flex-1 py-3 px-2 rounded-lg border flex-row justify-center items-center ml-2
-                ${company === '14' ? 'bg-emerald-50 border-emerald-500' : 'bg-white border-gray-200'}`}
-            >
-              <Text className={`font-semibold text-center ${company === '14' ? 'text-emerald-700' : 'text-gray-600'}`}>
-                Verfrut (14)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          onPress={handleRegister}
-          disabled={loading}
-          className={`w-full py-4 rounded-xl mt-8 flex-row justify-center items-center shadow-sm ${loading ? 'bg-gray-400' : 'bg-gray-900'}`}
+    <View className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView className="flex-1">
+        <ScrollView 
+          className="flex-1" 
+          contentContainerStyle={{ padding: 24, paddingTop: 20, paddingBottom: 60 }}
+          showsVerticalScrollIndicator={false}
         >
-           {loading ? (
-             <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white text-center font-bold text-lg">Completar Registro</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          {/* Back Button - Moved down for better accessibility */}
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100 mb-8"
+          >
+            <Text className="text-xl text-slate-900">←</Text>
+          </TouchableOpacity>
+
+          <View className="mb-10">
+            <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Administración</Text>
+            <Text className="text-4xl font-black text-slate-900 tracking-tighter">Nuevo Usuario</Text>
+            <Text className="text-slate-400 mt-2 font-medium leading-5">Configura una nueva cuenta de acceso para el personal.</Text>
+          </View>
+
+          <View className="space-y-6">
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nombre Completo</Text>
+              <TextInput
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-base text-slate-900 font-bold focus:border-indigo-500"
+                placeholder="Ej. Juan Pérez"
+                placeholderTextColor="#94a3b8"
+                value={name}
+                onChangeText={setName}
+              />
+            </View>
+
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Correo Electrónico</Text>
+              <TextInput
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-base text-slate-900 font-bold focus:border-indigo-500"
+                placeholder="usuario@verfrut.pe"
+                placeholderTextColor="#94a3b8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Contraseña</Text>
+              <TextInput
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 text-base text-slate-900 font-bold focus:border-indigo-500"
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor="#94a3b8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            {/* Role Selector */}
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Rol del Usuario</Text>
+              <View className="flex-row gap-3">
+                {['CONTROL', 'ENCARGADO'].map((r) => (
+                  <TouchableOpacity 
+                    key={r}
+                    onPress={() => setRole(r)}
+                    activeOpacity={0.8}
+                    className={`flex-1 py-4 rounded-2xl border items-center justify-center 
+                      ${role === r ? 'bg-indigo-600 border-indigo-600 shadow-lg shadow-indigo-100' : 'bg-white border-slate-100'}`}
+                  >
+                    <Text className={`font-black text-[10px] uppercase tracking-widest ${role === r ? 'text-white' : 'text-slate-400'}`}>
+                      {r}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            {/* Company Selector */}
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Sede / Empresa</Text>
+              <View className="flex-row gap-3">
+                {[
+                  { id: '9', name: 'Rapel' },
+                  { id: '14', name: 'Verfrut' }
+                ].map((c) => (
+                  <TouchableOpacity 
+                    key={c.id}
+                    onPress={() => setCompany(c.id)}
+                    activeOpacity={0.8}
+                    className={`flex-1 py-4 rounded-2xl border items-center justify-center 
+                      ${company === c.id ? 'bg-slate-900 border-slate-900 shadow-lg shadow-slate-100' : 'bg-white border-slate-100'}`}
+                  >
+                    <Text className={`font-black text-[10px] uppercase tracking-widest ${company === c.id ? 'text-white' : 'text-slate-400'}`}>
+                      {c.name} ({c.id})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              onPress={handleRegister}
+              disabled={loading}
+              activeOpacity={0.8}
+              className={`w-full py-6 rounded-[2rem] mt-6 flex-row justify-center items-center shadow-2xl shadow-indigo-200 ${loading ? 'bg-slate-300' : 'bg-indigo-600 border border-indigo-500'}`}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <View className="flex-row items-center">
+                  <Text className="text-white font-black uppercase tracking-widest text-xs mr-2">Crear Usuario</Text>
+                  <Text className="text-lg">✨</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }

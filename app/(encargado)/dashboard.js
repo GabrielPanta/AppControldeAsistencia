@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, FlatList, StatusBar } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -11,11 +11,8 @@ import { useRouter } from 'expo-router';
 
 // Función para convertir número de serie de Excel a Fecha JS
 const excelDateToJSDate = (excelDate) => {
-  // Según Excel, 1 = 1 Ene 1900. Se resta 25569 días para igualarlo al 1 Ene 1970 UNIX epoch.
-  // Luego se multiplica por 86400 (segundos al día) y por 1000 (milisegundos).
   const timestamp = Math.round((excelDate - 25569) * 86400 * 1000);
   const dateObj = new Date(timestamp);
-  // Sumamos el offset de zona horaria local que el navegador pueda aplicar
   const localOffsetInMs = dateObj.getTimezoneOffset() * 60000;
   return new Date(dateObj.getTime() + localOffsetInMs);
 };
@@ -29,7 +26,6 @@ export default function EncargadoDashboard() {
   useEffect(() => {
     if (!userData?.companyId) return;
 
-    // Escuchar cambios en los reportes de la misma empresa
     const q = query(
       collection(db, 'reports'),
       where('companyId', '==', userData.companyId)
@@ -41,21 +37,16 @@ export default function EncargadoDashboard() {
         ...doc.data()
       }));
 
-      // ORDENAR LOCALMENTE
       const sortedReports = reportesObtenidos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setReports(sortedReports);
     }, (error) => {
       console.error("Error en snapshot listener de reportes:", error);
       if (error.code === 'permission-denied') {
-        Alert.alert(
-          'Error de Permisos', 
-          'No tienes permisos suficientes para ver los reportes. Por favor, verifica las reglas de seguridad en la consola de Firebase o contacta al administrador.'
-        );
+        Alert.alert('Error de Permisos', 'No tienes permisos suficientes.');
       } else {
-        Alert.alert('Error', `Hubo un problema al cargar los reportes: ${error.message}`);
+        Alert.alert('Error', `Problema al cargar reportes: ${error.message}`);
       }
     });
-
 
     return () => unsubscribe();
   }, [userData]);
@@ -63,7 +54,7 @@ export default function EncargadoDashboard() {
   if (authLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#4f46e5" />
       </View>
     );
   }
@@ -71,9 +62,9 @@ export default function EncargadoDashboard() {
   if (!userData) {
     return (
       <View className="flex-1 justify-center items-center bg-white p-8">
-        <Text className="text-xl font-bold text-gray-800 mb-4">No se encontró información del usuario</Text>
-        <TouchableOpacity onPress={handleSignOut} className="bg-blue-600 px-6 py-3 rounded-xl">
-           <Text className="text-white font-bold">Volver al Login</Text>
+        <Text className="text-xl font-bold text-gray-800 mb-4">Perfil no encontrado</Text>
+        <TouchableOpacity onPress={() => auth.signOut()} className="bg-indigo-600 px-6 py-3 rounded-xl">
+           <Text className="text-white font-bold">Volver</Text>
         </TouchableOpacity>
       </View>
     );
@@ -87,7 +78,7 @@ export default function EncargadoDashboard() {
   const handleEliminarReporte = (reportId, date) => {
     Alert.alert(
       "Eliminar Reporte",
-      `¿Estás seguro de que deseas eliminar permanentemente el reporte del ${date}? Esta acción borrará la asistencia de todo el personal.`,
+      `¿Borrar reporte del ${date}?`,
       [
         { text: "Cancelar", style: "cancel" },
         { 
@@ -96,25 +87,16 @@ export default function EncargadoDashboard() {
           onPress: async () => {
             try {
               setLoading(true);
-              
-              // 1. Borrar todas las personas (subcolección) primero
               const peopleRef = collection(db, `reports/${reportId}/people`);
               const peopleSnapshot = await getDocs(peopleRef);
-              
               const deletePromises = peopleSnapshot.docs.map(personDoc => 
                 deleteDoc(doc(db, `reports/${reportId}/people`, personDoc.id))
               );
-              
               await Promise.all(deletePromises);
-
-              // 2. Borrar documento del reporte
               await deleteDoc(doc(db, 'reports', reportId));
-
-              Alert.alert('Eliminado', 'El reporte ha sido eliminado correctamente.');
-
+              Alert.alert('Eliminado', 'El reporte ha sido eliminado.');
             } catch (error) {
-               console.error("Error deleting report:", error);
-               Alert.alert('Error', `Hubo un problema intentando eliminar el reporte: ${error.message}`);
+               Alert.alert('Error', error.message);
             } finally {
                setLoading(false);
             }
@@ -127,68 +109,39 @@ export default function EncargadoDashboard() {
   const handleDescargarExcel = async (reportId, date, companyId) => {
     try {
       setLoading(true);
-      
-      // 1. Obtener todas las personas de este reporte
       const peopleRef = collection(db, `reports/${reportId}/people`);
       const peopleSnapshot = await getDocs(peopleRef);
-      
       if (peopleSnapshot.empty) {
-        Alert.alert('Aviso', 'Este reporte no tiene trabajadores registrados.');
+        Alert.alert('Aviso', 'Reporte sin trabajadores.');
         setLoading(false);
         return;
       }
-
-      // 2. Transformar los datos a formato plano para Excel
       const excelData = peopleSnapshot.docs.map(doc => {
         const data = doc.data();
-        
-        // Estructura base
         const rowData = {
           'Nombre Completo': data.nombreCompleto || '',
           'DNI': data.dni || '',
           'Código': data.codigo || ''
         };
-
-        // Añadir datos extra dinámicos
         if (data.datosExtra && typeof data.datosExtra === 'object') {
           Object.keys(data.datosExtra).forEach(key => {
             rowData[key] = data.datosExtra[key];
           });
         }
-
-        // Añadir observación del controlador al final
         rowData['Observación de Control'] = data.observacion || 'Sin observación';
-        
         return rowData;
       });
-
-      // 3. Crear el libro y la hoja de cálculo
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Asistencia");
-
-      // 4. Generar binario en Base64 seguro para RN
       const excelBase64 = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
-
-      // 5. Escribir archivo temporal
-      const fileUri = `${FileSystem.documentDirectory}Reporte_${date.replace(/\//g, '-')}_C${companyId}.xlsx`;
-      await FileSystem.writeAsStringAsync(fileUri, excelBase64, {
-        encoding: 'base64',  // <-- Solucionado: string directo en vez de Enumerador que tira TypeError
-      });
-
-      // 6. Compartir / Descargar usando menú nativo
+      const fileUri = `${FileSystem.documentDirectory}Reporte_${date.replace(/\//g, '-')}.xlsx`;
+      await FileSystem.writeAsStringAsync(fileUri, excelBase64, { encoding: 'base64' });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-           dialogTitle: `Descargar Reporte ${date}`,
-        });
-      } else {
-        Alert.alert('Error', 'Compartir archivos no está disponible en este dispositivo.');
+        await Sharing.shareAsync(fileUri);
       }
-
     } catch (error) {
-      console.error("Error generating excel:", error);
-      Alert.alert('Error', 'Hubo un problema generando el archivo Excel.');
+      Alert.alert('Error', 'No se pudo generar el Excel.');
     } finally {
       setLoading(false);
     }
@@ -197,20 +150,14 @@ export default function EncargadoDashboard() {
   const procesarExcel = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
         copyToCacheDirectory: true,
       });
-
-      if (result.canceled) {
-        return;
-      }
-
+      if (result.canceled) return;
       setLoading(true);
-
       const fileUri = result.assets[0].uri;
       const response = await fetch(fileUri);
       const blob = await response.blob();
-      
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
@@ -218,178 +165,179 @@ export default function EncargadoDashboard() {
           const workbook = XLSX.read(data, { type: 'array' });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          
-          // Parse JSON with headers
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
           if (jsonData.length < 2) {
-            Alert.alert('Error', 'El archivo Excel parece estar vacío o no tiene la estructura correcta.');
+            Alert.alert('Error', 'Excel vacío.');
             setLoading(false);
             return;
           }
-
-          // Headers are in index 0, data starts from index 1
           const headers = jsonData[0];
           const rows = jsonData.slice(1);
-
-          // Find column indices based on our known structure
-          // Nombres Y Apellidos / DNI / Codigo
           const nameIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('NOMBRE'));
           const dniIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('DNI'));
           const codeIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('CODIGO'));
           const dateIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('FECHA'));
-
-          // Try to get the date from the first row, or use today's date
-          let reportDate = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          let reportDate = new Date().toLocaleDateString('es-ES');
           if (dateIndex !== -1 && rows[0] && rows[0][dateIndex]) {
              const rawDate = rows[0][dateIndex];
-             if (typeof rawDate === 'number') {
-                // Es un número de serie de Excel
-                const dateObj = excelDateToJSDate(rawDate);
-                reportDate = dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-             } else {
-                // Es texto normal
-                reportDate = String(rawDate);
-             }
+             reportDate = typeof rawDate === 'number' ? excelDateToJSDate(rawDate).toLocaleDateString('es-ES') : String(rawDate);
           }
-
-           // 1. Create the main report document
           const reportRef = await addDoc(collection(db, 'reports'), {
             companyId: userData.companyId || 'N/A',
             date: reportDate,
             uploadedBy: auth.currentUser?.uid || 'Unknown',
             status: 'OPEN',
-            columnOrder: headers,
             createdAt: new Date().toISOString()
           });
-
-          // 2. Add each person to the subcollection
           const batchPromises = rows.map(async (row) => {
-            // Skip empty rows
-            if (!row || row.length === 0 || !row[nameIndex]) return;
-
-            // Collect all extra original columns dynamically
+            if (!row || !row[nameIndex]) return;
             const datosExtra = {};
             headers.forEach((headerName, index) => {
-               // Only store if there's an actual value and it's not one of our main mapped columns
-               if (
-                  headerName && 
-                  index !== nameIndex && 
-                  index !== dniIndex && 
-                  index !== codeIndex && 
-                  index !== dateIndex && 
-                  row[index] !== undefined &&
-                  row[index] !== null
-                ) {
-                  // Save as string for safety
+               if (headerName && index !== nameIndex && index !== dniIndex && index !== codeIndex && index !== dateIndex && row[index] != null) {
                   datosExtra[String(headerName)] = String(row[index]);
                }
             });
-
             const personaRef = doc(collection(db, `reports/${reportRef.id}/people`));
             return setDoc(personaRef, {
-              nombreCompleto: nameIndex !== -1 ? String(row[nameIndex] || '') : 'Desconocido',
+              nombreCompleto: String(row[nameIndex] || ''),
               dni: dniIndex !== -1 ? String(row[dniIndex] || '') : '',
               codigo: codeIndex !== -1 ? String(row[codeIndex] || '') : '',
               datosExtra: datosExtra,
               observacion: 'Sin observación',
-              respuestaObservacion: ''
+              reviewed: false
             });
           });
-
           await Promise.all(batchPromises);
-
-          Alert.alert('¡Éxito!', `Reporte subido correctamente. ID: ${reportRef.id}`);
+          Alert.alert('Éxito', 'Reporte subido.');
         } catch (err) {
-          console.error("Error al procesar data:", err);
-          Alert.alert('Error', 'Hubo un problema procesando el contenido del Excel.');
+          Alert.alert('Error', 'Fallo al procesar.');
         } finally {
           setLoading(false);
         }
       };
-
       reader.readAsArrayBuffer(blob);
-
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'No se pudo leer el archivo.');
       setLoading(false);
     }
   };
 
+  const isAdmin = (auth.currentUser?.email || userData?.email)?.toLowerCase() === 'gpanta@verfrut.pe';
+
   return (
-    <ScrollView className="flex-1 bg-gray-50" contentContainerStyle={{ padding: 24, paddingBottom: 64 }}>
-      <View className="flex-row justify-between items-center mb-8 mt-4">
-         <View>
-            <Text className="text-2xl font-bold text-gray-900">Hola, {userData?.name || 'Encargado'}</Text>
-            <Text className="text-blue-600 font-medium mt-1">Empresa {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'} ({userData?.companyId})</Text>
-         </View>
-         <TouchableOpacity 
-           onPress={handleSignOut}
-           className="bg-gray-200 px-4 py-2 rounded-lg"
-         >
-           <Text className="text-gray-700 font-medium text-sm">Salir</Text>
-         </TouchableOpacity>
-      </View>
-
-      <View className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
-        <Text className="text-lg font-bold text-gray-800 mb-2">Subir Reporte de Asistencia</Text>
-        <Text className="text-gray-500 mb-6 leading-5">
-          Selecciona el archivo Excel (.xlsx) con el registro diario de trabajadores. El sistema extraerá la información para el Control de Asistencia.
-        </Text>
-
-        <TouchableOpacity 
-          onPress={procesarExcel}
-          disabled={loading}
-          className={`w-full py-4 rounded-xl flex-row justify-center items-center shadow-sm shadow-blue-200 ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
-        >
-          {loading ? (
-             <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white font-bold text-lg ml-2">📄 Seleccionar Archivo Excel</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex-1">
-        <Text className="text-lg font-bold text-gray-800 mb-4">Reportes Recientes</Text>
-        
-        {reports.length === 0 ? (
-           <Text className="text-gray-500 text-center py-4">Aún no hay reportes subidos.</Text>
-        ) : (
-          reports.map((item) => (
-            <View key={item.id} className="bg-gray-50 p-4 rounded-lg flex-row justify-between items-center mb-3 border border-gray-100">
-               <View className="flex-1">
-                  <Text className="font-semibold text-gray-800">Reporte del {item.date}</Text>
-                  <Text className="text-xs text-gray-500 mt-1 font-bold tracking-wider">
-                     <Text className={item.status === 'CLOSED' ? 'text-green-600' : 'text-blue-600'}>
-                        {item.status === 'CLOSED' ? 'CERRADO' : 'ABIERTO'}
-                     </Text> • {item.companyId === '9' ? 'Rapel' : 'Verfrut'}
+    <View className="flex-1 bg-slate-50">
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Header Premium */}
+      <View className="px-6 pt-12 pb-10 bg-white border-b border-slate-100 shadow-sm rounded-b-[3.5rem] z-10">
+         <View className="flex-row justify-between items-center mb-8">
+            <View className="flex-row items-center">
+               <View className="w-12 h-12 bg-indigo-600 rounded-full items-center justify-center shadow-lg shadow-indigo-200">
+                  <Text className="text-white font-black text-lg">
+                    {userData?.name ? userData.name.charAt(0).toUpperCase() : 'E'}
                   </Text>
                </View>
-               <View className="flex-row items-center space-x-2">
-                  {item.status === 'CLOSED' && (
-                     <TouchableOpacity 
-                        onPress={() => handleDescargarExcel(item.id, item.date, item.companyId)}
-                        className="bg-green-100 p-2 rounded-full w-10 h-10 items-center justify-center border border-green-200"
-                        title="Descargar Excel"
-                     >
-                        <Text className="text-green-700 text-xl text-center">📥</Text>
-                     </TouchableOpacity>
-                  )}
-                  <TouchableOpacity 
-                     onPress={() => handleEliminarReporte(item.id, item.date)}
-                     className="bg-red-50 p-2 rounded-full w-10 h-10 items-center justify-center ml-2 border border-red-100"
-                     title="Eliminar Reporte"
-                   >
-                     <Text className="text-red-600 text-xl text-center">🗑️</Text>
-                  </TouchableOpacity>
+               <View className="ml-4">
+                  <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Encargado</Text>
+                  <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>
+                    {userData?.name || 'Usuario'}
+                  </Text>
                </View>
             </View>
-          ))
-        )}
+            <View className="flex-row items-center">
+               {isAdmin && (
+                  <TouchableOpacity 
+                    onPress={() => router.push('/register')}
+                    className="w-12 h-12 bg-indigo-50 rounded-2xl items-center justify-center border border-indigo-100 mr-2 shadow-sm"
+                  >
+                    <Text className="text-xl">➕</Text>
+                  </TouchableOpacity>
+               )}
+               <TouchableOpacity 
+                 onPress={handleSignOut} 
+                 className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100"
+               >
+                 <Text className="text-xl">🚪</Text>
+               </TouchableOpacity>
+            </View>
+         </View>
+
+         <View>
+            <Text className="text-lg font-black text-slate-900 tracking-tight">Gestión Operativa</Text>
+            <View className="flex-row items-center mt-1">
+               <View className="w-2 h-2 rounded-full bg-indigo-500 mr-2" />
+               <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+                 {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'} (Empresa {userData?.companyId})
+               </Text>
+            </View>
+         </View>
       </View>
 
-    </ScrollView>
+      <ScrollView 
+        className="flex-1" 
+        contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-indigo-500/5 border border-slate-100 mb-8">
+          <Text className="text-xl font-black text-slate-900 mb-2 tracking-tighter">Subir Reporte</Text>
+          <Text className="text-slate-400 mb-8 text-xs font-medium leading-4">
+            Selecciona el Excel para extraer la información diaria.
+          </Text>
+
+          <TouchableOpacity 
+            onPress={procesarExcel}
+            disabled={loading}
+            activeOpacity={0.8}
+            className={`w-full py-6 rounded-full flex-row justify-center items-center shadow-2xl shadow-indigo-400/20 ${loading ? 'bg-slate-400' : 'bg-indigo-600'}`}
+          >
+            {loading ? <ActivityIndicator color="white" /> : (
+              <View className="flex-row items-center">
+                <Text className="text-xl mr-3">📄</Text>
+                <Text className="text-white font-black uppercase tracking-widest text-[10px]">Cargar Plantilla</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View className="bg-white p-8 rounded-[3.5rem] shadow-2xl shadow-indigo-500/5 border border-slate-100 flex-1 min-h-[300px]">
+          <Text className="text-xl font-black text-slate-950 mb-6 tracking-tighter">Historial</Text>
+          
+          {reports.length === 0 ? (
+             <View className="py-10 items-center">
+                <Text className="text-slate-300 font-bold uppercase tracking-widest text-[10px]">Sin reportes</Text>
+             </View>
+          ) : (
+            reports.map((item) => (
+              <View key={item.id} className="bg-slate-50 p-6 rounded-[2.5rem] flex-row justify-between items-center mb-5 border border-slate-100/50 shadow-sm">
+                 <View className="flex-1">
+                    <View className="flex-row items-center mb-1">
+                       <View className={`w-1.5 h-1.5 rounded-full ${item.status === 'CLOSED' ? 'bg-emerald-500' : 'bg-indigo-600'} mr-2`} />
+                       <Text className={`text-[9px] font-black ${item.status === 'CLOSED' ? 'text-emerald-600' : 'text-indigo-600'} uppercase tracking-widest`}>
+                          {item.status === 'CLOSED' ? 'Finalizado' : 'Abierto'}
+                       </Text>
+                    </View>
+                    <Text className="text-base font-black text-slate-900 tracking-tighter">Día {item.date}</Text>
+                 </View>
+                 <View className="flex-row items-center gap-2">
+                    {item.status === 'CLOSED' && (
+                       <TouchableOpacity 
+                          onPress={() => handleDescargarExcel(item.id, item.date, item.companyId)}
+                          className="bg-emerald-50 w-11 h-11 rounded-full items-center justify-center border border-emerald-100"
+                       >
+                          <Text className="text-lg">📥</Text>
+                       </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                       onPress={() => handleEliminarReporte(item.id, item.date)}
+                       className="bg-rose-50 w-11 h-11 rounded-full items-center justify-center border border-rose-100"
+                     >
+                       <Text className="text-lg">🗑️</Text>
+                    </TouchableOpacity>
+                 </View>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }

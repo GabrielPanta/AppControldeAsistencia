@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyDxrTqoCwXFR7zy_BEK0sobN3sFTQ8hnA4",
   authDomain: "asistencia-3407b.firebaseapp.com",
   projectId: "asistencia-3407b",

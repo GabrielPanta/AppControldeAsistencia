@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { auth, db, firebaseConfig } from './firebase';
+import { initializeApp } from 'firebase/app';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, setDoc, query, where, getDocs, updateDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,6 +65,37 @@ function App() {
 
   const handleLogout = () => signOut(auth);
 
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <DashboardView
+            userData={userData}
+            onSelectReport={(report) => {
+              setSelectedReport(report);
+              setCurrentView('report-detail');
+            }}
+          />
+        );
+      case 'report-detail':
+        return (
+          <ReportTableView
+            report={selectedReport}
+            onBack={() => setCurrentView('dashboard')}
+            userData={userData}
+          />
+        );
+      case 'register-user':
+        return (
+          <RegisterUserView 
+            onBack={() => setCurrentView('dashboard')} 
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col">
       <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
@@ -75,24 +107,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <Header userData={userData} handleLogout={handleLogout} />
+      <Header userData={userData} handleLogout={handleLogout} setView={setCurrentView} />
       <main className="flex-1 w-full mx-auto p-4 md:p-10">
         <AnimatePresence mode="wait">
-          {currentView === 'dashboard' ? (
-            <DashboardView
-              userData={userData}
-              onSelectReport={(report) => {
-                setSelectedReport(report);
-                setCurrentView('report-detail');
-              }}
-            />
-          ) : (
-            <ReportTableView
-              report={selectedReport}
-              onBack={() => setCurrentView('dashboard')}
-              userData={userData}
-            />
-          )}
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderCurrentView()}
+          </motion.div>
         </AnimatePresence>
       </main>
     </div>
@@ -135,21 +161,238 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
 }
 
 // --- HEADER ---
-function Header({ userData, handleLogout }) {
+function Header({ userData, handleLogout, setView }) {
+  const isAdmin = (auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe';
+
   return (
-    <header className="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center sticky top-0 z-50">
-      <div className="flex items-center gap-5">
+    <header className="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+      <div 
+        className="flex items-center gap-5 cursor-pointer" 
+        onClick={() => setView('dashboard')}
+      >
         <div className="relative w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl">A</div>
         <div>
           <h2 className="font-extrabold text-slate-900 text-lg">Reporte de Control de Asistencia</h2>
-          <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">{userData?.name} / {userData?.role} • EMPRESA {userData?.companyId}</p>
+          <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest leading-none mt-1">{userData?.name} / {userData?.role} • Empresa {userData?.companyId}</p>
         </div>
       </div>
-      <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-bold transition-colors">
-        <LogOut size={18} />
-        <span className="hidden sm:inline">Cerrar Sesión</span>
-      </button>
+      
+      <div className="flex items-center gap-6">
+        {isAdmin && (
+           <button 
+             onClick={() => setView('register-user')}
+             className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-black text-[10px] uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-xl transition-all border border-indigo-100"
+           >
+             <User size={14} />
+             Gestión Usuarios
+           </button>
+        )}
+         <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-bold transition-colors">
+           <LogOut size={18} />
+           <span className="hidden sm:inline">Cerrar Sesión</span>
+         </button>
+      </div>
     </header>
+  );
+}
+function RegisterUserView({ onBack }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'CONTROL',
+    companyId: '14'
+  });
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const q = query(collection(db, 'users'));
+        const snap = await getDocs(q);
+        setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (e) {
+        console.error("Error fetching users:", e);
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchUsers();
+  }, [success]);
+
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`¿Seguro que deseas eliminar a ${userName}?`)) return;
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (e) {
+      alert("Error al eliminar: " + e.message);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!formData.email || !formData.password || !formData.name) return;
+
+    try {
+      setLoading(true);
+      const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp" + Date.now());
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth, 
+        formData.email.trim(), 
+        formData.password
+      );
+      
+      const uid = userCredential.user.uid;
+      await setDoc(doc(db, 'users', uid), {
+        uid,
+        email: formData.email.trim(),
+        name: formData.name.trim(),
+        role: formData.role,
+        companyId: formData.companyId,
+        createdAt: new Date().toISOString()
+      });
+
+      await secondaryAuth.signOut();
+      await secondaryApp.delete();
+      
+      setSuccess(true);
+      setFormData({ name: '', email: '', password: '', role: 'CONTROL', companyId: '14' });
+      setTimeout(() => setSuccess(false), 3000);
+
+    } catch (error) {
+      alert("Error al crear usuario: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto py-10 px-6">
+      <div className="flex justify-between items-center mb-10">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-600 font-bold transition-colors">
+          <ChevronLeft size={20} />
+          Volver al Dashboard
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Registration Form */}
+        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5">
+          <div className="flex items-center gap-6 mb-10">
+            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-2xl">👤</div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Registrar Usuario</h2>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Nuevo acceso administrativo</p>
+            </div>
+          </div>
+
+          {success && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 bg-green-50 p-4 rounded-2xl border border-green-100 flex items-center gap-3">
+              <CheckCircle className="text-green-500" size={20} />
+              <p className="text-green-700 font-bold text-sm">¡Usuario registrado con éxito!</p>
+            </motion.div>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+              <input
+                type="text" placeholder="Ej. Juan Pérez"
+                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
+                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Correo Electrónico</label>
+              <input
+                type="email" placeholder="email@verfrut.pe"
+                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
+                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+              <input
+                type="password" placeholder="Mínimo 6 caracteres"
+                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
+                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rol</label>
+                <select 
+                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none outline-none font-bold text-slate-700 appearance-none"
+                  value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
+                >
+                  <option value="CONTROL">CONTROL</option>
+                  <option value="ENCARGADO">ENCARGADO</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Empresa</label>
+                <select 
+                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none outline-none font-bold text-slate-700 appearance-none"
+                  value={formData.companyId} onChange={e => setFormData({...formData, companyId: e.target.value})}
+                >
+                  <option value="9">RAPEL (9)</option>
+                  <option value="14">VERFRUT (14)</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit" disabled={loading}
+              className="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 uppercase tracking-widest text-[10px] mt-4 flex items-center justify-center gap-3 disabled:bg-slate-300"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : 'Registrar Nuevo Acceso'}
+            </button>
+          </form>
+        </div>
+
+        {/* User List */}
+        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-black text-slate-900 tracking-tighter">Usuarios Registrados</h3>
+            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black">{users.length} TOTAL</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            {fetching ? (
+              <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>
+            ) : users.length === 0 ? (
+              <p className="text-center py-10 text-slate-400 font-medium">No hay usuarios registrados</p>
+            ) : (
+              users.map(u => (
+                <div key={u.id} className="flex items-center justify-between p-5 rounded-3xl bg-slate-50 border border-slate-100">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs ${u.role === 'ENCARGADO' ? 'bg-indigo-500' : 'bg-slate-800'}`}>
+                      {u.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm leading-none mb-1">{u.name}</p>
+                      <p className="text-slate-400 text-[10px]">{u.email} • <span className="text-indigo-600 font-bold">{u.role}</span></p>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeleteUser(u.id, u.name)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -204,7 +447,9 @@ function DashboardView({ userData, onSelectReport }) {
         uploadedBy: auth.currentUser.uid,
         status: 'OPEN',
         createdAt: new Date().toISOString(),
-        columnOrder: headers // Guardamos el orden original completo
+        columnOrder: headers,
+        totalWorkers: dataRows.filter(row => row[nameI]).length,
+        reviewedWorkers: 0
       });
 
       const promises = dataRows.map(row => {

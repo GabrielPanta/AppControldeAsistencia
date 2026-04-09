@@ -110,10 +110,9 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <View className="flex-row justify-center items-center mt-8">
-                <Text className="text-slate-400 text-xs font-semibold tracking-tight">¿No tienes cuenta? </Text>
-                <TouchableOpacity onPress={() => router.push('/register')}>
-                  <Text className="text-blue-500 font-black text-xs tracking-tight">Regístrate aquí</Text>
-                </TouchableOpacity>
+                <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest text-center">
+                  Acceso exclusivo para personal autorizado
+                </Text>
               </View>
             </View>
           </View>

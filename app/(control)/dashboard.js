@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList, Alert } from 'react-native';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList, Alert, StatusBar, SafeAreaView } from 'react-native';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 import { useAuth } from '../../context/auth';
 import { useRouter } from 'expo-router';
@@ -8,106 +8,230 @@ import { useRouter } from 'expo-router';
 export default function ControlDashboard() {
   const { userData } = useAuth();
   const [reports, setReports] = useState([]);
+  const [reportStats, setReportStats] = useState({});
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const handleSignOut = () => {
-    auth.signOut();
-    router.replace('/');
+    Alert.alert(
+      "Cerrar Sesión",
+      "¿Estás seguro que deseas salir?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Salir",
+          style: "destructive",
+          onPress: () => {
+            auth.signOut();
+            router.replace('/');
+          }
+        }
+      ]
+    );
   };
 
   useEffect(() => {
     if (!userData?.companyId) return;
 
-    const fetchReports = async () => {
-      try {
-        setLoading(true);
-        // Traer reportes de la misma empresa que estén abiertos
-        const q = query(
-          collection(db, 'reports'),
-          where('companyId', '==', userData.companyId),
-          where('status', 'in', ['OPEN', 'ABIERTO'])
-        );
+    // Usamos onSnapshot para que los reportes se actualicen en tiempo real
+    const q = query(
+      collection(db, 'reports'),
+      where('companyId', '==', userData.companyId),
+      where('status', 'in', ['OPEN', 'ABIERTO'])
+    );
 
-        const querySnapshot = await getDocs(q);
-        const reportesObtenidos = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        // ORDENAR LOCALMENTE para evitar requerir un índice compuesto en Firestore de entrada
-        const sortedReports = reportesObtenidos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reportesObtenidos = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-        setReports(sortedReports);
-      } catch (error) {
-        console.error("Error fetching reports:", error);
-        if (error.code === 'permission-denied') {
-          Alert.alert(
-            'Error de Permisos', 
-            'No tienes permisos suficientes para ver los reportes. Por favor, verifica las reglas de seguridad en la consola de Firebase o contacta al administrador.'
-          );
-        } else {
-          Alert.alert('Error', `Hubo un problema al cargar los reportes: ${error.message}`);
+      const sortedReports = reportesObtenidos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setReports(sortedReports);
+      setLoading(false);
+
+      // Cargar estadísticas de avance para cada reporte
+      reportesObtenidos.forEach(async (rep) => {
+        try {
+          const peopleSnap = await getDocs(collection(db, `reports/${rep.id}/people`));
+          const total = peopleSnap.size;
+          const completed = peopleSnap.docs.filter(d => !!d.data().respuestaObservacion).length;
+          setReportStats(prev => ({
+            ...prev,
+            [rep.id]: { total, completed }
+          }));
+        } catch (err) {
+          console.error("Error fetching stats for", rep.id, err);
         }
-      } finally {
-        setLoading(false);
-      }
-    };
+      });
+    }, (error) => {
+      console.error("Error fetching reports:", error);
+      setLoading(false);
+    });
 
-    fetchReports();
+    return () => unsubscribe();
   }, [userData]);
 
-  const renderReportItem = ({ item }) => (
-    <TouchableOpacity 
-      onPress={() => router.push(`/(control)/report/${item.id}`)}
-      className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-4 flex-row justify-between items-center"
-    >
-      <View>
-        <Text className="text-lg font-bold text-gray-800">Reporte {item.date}</Text>
-        <Text className="text-sm text-gray-500 mt-1">Sube: {item.companyId === '9' ? 'Rapel' : 'Verfrut'}</Text>
-      </View>
-      <View className="bg-blue-50 px-3 py-1.5 rounded-full">
-        <Text className="text-blue-700 text-xs font-bold text-center">REVISAR →</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderReportItem = ({ item }) => {
+    const stats = reportStats[item.id] || { total: 0, completed: 0 };
+    const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+
+    return (
+      <TouchableOpacity
+        onPress={() => router.push(`/(control)/report/${item.id}`)}
+        activeOpacity={0.7}
+        className="bg-white p-6 rounded-[2.5rem] shadow-2xl shadow-indigo-500/5 border border-slate-100/50 mb-5 overflow-hidden"
+      >
+        <View className="flex-row justify-between items-center mb-5">
+          <View className="flex-row items-center flex-1">
+            <View className="w-16 h-16 bg-indigo-50 rounded-[1.8rem] items-center justify-center mr-5 border border-indigo-100/50">
+              <Text className="text-3xl">📂</Text>
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center mb-1">
+                <View className={`w-1.5 h-1.5 rounded-full ${percentage === 100 ? 'bg-green-500' : 'bg-indigo-600'} mr-2`} />
+                <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {percentage === 100 ? 'Revisión Completa' : 'Avance del Reporte'}
+                </Text>
+              </View>
+              <Text className="text-[19px] font-black text-slate-900 tracking-tighter">Día {item.date}</Text>
+              <Text className="text-[11px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
+                Empresa: {item.companyId === '9' ? 'Rapel' : 'Verfrut'}
+              </Text>
+            </View>
+          </View>
+          <View className="bg-indigo-600 w-11 h-11 rounded-full items-center justify-center shadow-lg shadow-indigo-200">
+            <Text className="text-white font-black text-lg">→</Text>
+          </View>
+        </View>
+
+        {/* Progress Section */}
+        <View className="bg-slate-50/50 p-4 rounded-[1.8rem] border border-slate-100/50">
+          <View className="flex-row justify-between items-center mb-3 px-1">
+            <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progreso</Text>
+            <View className="flex-row items-center">
+              <Text className="text-[11px] font-black text-slate-800">{stats.completed}</Text>
+              <Text className="text-[11px] font-bold text-slate-300"> / {stats.total} revisados</Text>
+            </View>
+          </View>
+          <View className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+            <View
+              className={`h-full ${percentage === 100 ? 'bg-green-500' : 'bg-indigo-600'}`}
+              style={{ width: `${percentage}%` }}
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className="p-6 pb-2 pt-10 flex-row justify-between items-center bg-white border-b border-gray-100">
-         <View>
-            <Text className="text-xl font-extrabold text-gray-900">🔍 Control de Asistencia</Text>
-            <Text className="text-blue-600 font-medium mt-1">Hola, {userData?.name || 'Control'}</Text>
-         </View>
-         <TouchableOpacity onPress={handleSignOut} className="bg-gray-100 px-4 py-2 rounded-lg">
-           <Text className="text-gray-700 font-medium text-sm">Salir</Text>
-         </TouchableOpacity>
+    <SafeAreaView className="flex-1 bg-slate-50">
+      <StatusBar barStyle="dark-content" />
+
+      {/* Header Premium con Estilo de Pantalla de Monitoreo */}
+      <View className="px-6 pt-6 pb-10 bg-white border-b border-slate-100 shadow-sm">
+        <View className="flex-row justify-between items-center mb-10">
+          <View className="flex-row items-center">
+            <View className="w-12 h-12 bg-indigo-600 rounded-full items-center justify-center shadow-lg shadow-indigo-200">
+              <Text className="text-white font-black text-lg">
+                {userData?.name ? userData.name.charAt(0).toUpperCase() : 'A'}
+              </Text>
+            </View>
+            <View className="ml-4">
+              <Text className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none mb-1">Bienvenido</Text>
+              <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>
+                {userData?.name || 'Administrador'}
+              </Text>
+            </View>
+          </View>
+            <View className="flex-row items-center">
+               {(auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe' && (
+                  <TouchableOpacity 
+                    onPress={() => router.push('/register')}
+                    className="w-12 h-12 bg-indigo-50 rounded-2xl items-center justify-center border border-indigo-100 mr-2 shadow-sm"
+                  >
+                    <Text className="text-xl">➕</Text>
+                  </TouchableOpacity>
+               )}
+               <TouchableOpacity 
+                 onPress={handleSignOut} 
+                 className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100"
+               >
+                 <Text className="text-xl">🚪</Text>
+               </TouchableOpacity>
+            </View>
+        </View>
+
+        {/* Widgets Estadísticos con Iconografía */}
+        <View className="flex-row gap-4">
+          <View className="flex-1 bg-indigo-600 p-7 rounded-[4rem] shadow-2xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden relative">
+            {/* Background Glow Effect */}
+            <View className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full" />
+
+            <View className="flex-row items-center gap-3 mb-3">
+              <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+                <Text className="text-sm">📋</Text>
+              </View>
+              <Text className="text-indigo-100 text-[9px] font-black uppercase tracking-widest opacity-90">Pendientes</Text>
+            </View>
+            <View className="flex-row items-baseline gap-1.5 px-1">
+              <Text className="text-white text-4xl font-black tracking-tighter">{reports.length}</Text>
+              <Text className="text-indigo-200 text-[10px] font-black uppercase">Reportes</Text>
+            </View>
+          </View>
+
+          <View className="flex-1 bg-slate-950 p-7 rounded-[4rem] shadow-2xl shadow-slate-950/20 border border-slate-900 overflow-hidden relative">
+            {/* Background Glow Effect */}
+            <View className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full" />
+
+            <View className="flex-row items-center gap-3 mb-3">
+              <View className="w-8 h-8 rounded-full bg-slate-800 items-center justify-center">
+                <Text className="text-sm">🛡️</Text>
+              </View>
+              <Text className="text-slate-400 text-[9px] font-black uppercase tracking-widest opacity-80">Control</Text>
+            </View>
+            <View className="px-1">
+              <Text className="text-white text-[17px] font-black tracking-tighter mb-1" numberOfLines={1}>
+                {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'}
+              </Text>
+              <Text className="text-indigo-500 text-[9px] font-black uppercase tracking-widest">Sede Central</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
-      <View className="flex-1 px-4 pt-6">
-        <Text className="text-lg font-bold text-gray-800 mb-4 px-2">Reportes Pendientes</Text>
+      <View className="flex-1 px-6 pt-8">
+        <View className="flex-row items-baseline justify-between mb-6">
+          <Text className="text-xl font-black text-slate-900 tracking-tight">Reportes Abiertos</Text>
+          <Text className="text-indigo-600 font-bold text-xs">{reports.length} en total</Text>
+        </View>
 
         {loading ? (
-             <View className="flex-1 justify-center items-center">
-                 <ActivityIndicator size="large" color="#2563EB" />
-                 <Text className="text-gray-500 mt-4">Cargando reportes...</Text>
-             </View>
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-[10px]">Actualizando datos...</Text>
+          </View>
         ) : reports.length === 0 ? (
-            <View className="bg-white p-8 rounded-2xl border border-gray-100 items-center justify-center mt-4">
-                <Text className="text-4xl mb-4">✅</Text>
-                <Text className="text-xl font-bold text-gray-800 text-center">¡Todo al día!</Text>
-                <Text className="text-gray-500 text-center mt-2">No hay reportes abiertos pendientes de revisión para tu empresa.</Text>
+          <View className="bg-white p-10 rounded-[2.5rem] border border-slate-100 items-center justify-center mt-4 shadow-sm">
+            <View className="w-20 h-20 bg-green-50 rounded-full items-center justify-center mb-6">
+              <Text className="text-4xl">✨</Text>
             </View>
+            <Text className="text-2xl font-black text-slate-900 text-center tracking-tight">¡Todo completado!</Text>
+            <Text className="text-slate-400 text-center mt-3 font-medium leading-5">
+              No hay reportes pendientes de revisión en este momento para tu empresa.
+            </Text>
+          </View>
         ) : (
-          <FlatList 
+          <FlatList
             data={reports}
             keyExtractor={item => item.id}
             renderItem={renderReportItem}
-            contentContainerStyle={{ paddingBottom: 40 }}
+            contentContainerStyle={{ paddingBottom: 60 }}
             showsVerticalScrollIndicator={false}
           />
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
