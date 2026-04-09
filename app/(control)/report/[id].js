@@ -15,8 +15,8 @@ const RESPUESTAS_OPTIONS = [
 ];
 
 const STYLES_COMPLETION = {
-  active: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200", accent: "bg-blue-500" },
-  pending: { bg: "bg-slate-50", text: "text-slate-400", border: "border-slate-100", accent: "bg-slate-200" }
+  active: { bg: "bg-blue-50/50", text: "text-blue-600", border: "border-blue-100", accent: "bg-blue-500" },
+  pending: { bg: "bg-slate-50/50", text: "text-slate-400", border: "border-slate-100", accent: "bg-slate-200" }
 };
 
 const FilterChip = ({ icon, label, value, onPress }) => {
@@ -24,14 +24,14 @@ const FilterChip = ({ icon, label, value, onPress }) => {
   return (
     <TouchableOpacity 
       onPress={onPress}
-      activeOpacity={0.7}
-      className={`flex-row items-center px-4 py-2.5 rounded-2xl border ${isActive ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'}`}
+      activeOpacity={0.8}
+      className={`flex-row items-center px-5 py-3 rounded-2xl border ${isActive ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-100' : 'bg-white border-slate-200 shadow-sm shadow-slate-50'}`}
     >
       <Text className="mr-2 text-xs">{icon}</Text>
-      <Text className={`text-[10px] font-black uppercase tracking-tight ${isActive ? 'text-white' : 'text-slate-500'}`}>
+      <Text className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-slate-500'}`}>
         {isActive ? `${label}: ${value}` : label}
       </Text>
-      {!isActive && <Text className="ml-2 text-slate-300 text-[10px]">▼</Text>}
+      {!isActive && <Text className="ml-2.5 text-slate-300 text-[10px]">▼</Text>}
     </TouchableOpacity>
   );
 };
@@ -77,62 +77,64 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, option
         <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1" />
         <View className="bg-white rounded-t-[3rem] p-8 max-h-[92%] shadow-2xl">
           <View className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
-
+          
           <View className="flex-row justify-between items-start mb-6">
             <View className="flex-1 pr-6">
-              <Text className="text-sm font-black text-blue-600 uppercase tracking-widest mb-1.5">Ficha del Trabajador</Text>
-              <Text className="text-2xl font-black text-slate-900 leading-tight mb-2 tracking-tight">{person.nombreCompleto}</Text>
-              <View className="flex-row items-center bg-slate-50 self-start px-3 py-1.5 rounded-xl border border-slate-100">
-                <Text className="text-[11px] font-black text-slate-500 uppercase tracking-wider">DNI: {person.dni || '---'}</Text>
+              <Text className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Ficha del Trabajador</Text>
+              <Text className="text-3xl font-black text-slate-950 leading-tight mb-3 tracking-tighter">{person.nombreCompleto}</Text>
+              <View className="flex-row items-center bg-slate-50 self-start px-4 py-2 rounded-2xl border border-slate-100">
+                <Text className="text-[11px] font-black text-slate-500 uppercase tracking-widest">DNI: {person.dni || '---'}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} className="bg-slate-100 w-12 h-12 rounded-2xl items-center justify-center">
+            <TouchableOpacity onPress={onClose} className="bg-slate-50 w-12 h-12 rounded-[1.5rem] items-center justify-center border border-slate-100">
               <Text className="text-slate-400 font-bold text-lg">✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
-            {/* Observation from EXCEL as Reference */}
-            <View className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 mb-8">
-              <View className="flex-row items-center gap-2 mb-2">
-                <Text className="text-sm">📋</Text>
-                <Text className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Observación del Excel (Referencia)</Text>
-              </View>
-              <Text className="text-sm text-amber-700 font-bold leading-relaxed">{person.observacion || 'Sin observación'}</Text>
-            </View>
-
-            <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Seleccionar Respuesta</Text>
-
-            {/* Combobox Style Selection */}
-            <TouchableOpacity
-              onPress={() => setShowPicker(true)}
-              activeOpacity={0.7}
-              className={`flex-row justify-between items-center p-5 rounded-2xl mb-8 border ${person.respuestaObservacion ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}
-            >
-              <View className="flex-1">
-                {person.respuestaObservacion ? (
-                  <Text className="text-[15px] font-black text-blue-600 tracking-tight">{person.respuestaObservacion}</Text>
-                ) : (
-                  <Text className="text-[15px] font-bold text-slate-300">Seleccionar respuesta...</Text>
-                )}
-              </View>
-              <Text className="text-slate-300 text-lg">▼</Text>
-            </TouchableOpacity>
-
-            <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Información Adicional</Text>
-            <View className="bg-slate-50/50 rounded-[2rem] p-6 border border-slate-100">
-              {person.datosExtra && Object.entries(person.datosExtra).map(([key, value], idx) => (
-                <View key={key} className={`pb-4 mb-4 ${idx !== Object.keys(person.datosExtra).length - 1 ? 'border-b border-slate-200/30' : ''}`}>
-                  <Text className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">{key}</Text>
-                  <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
+             {/* Observation from EXCEL as Reference */}
+             <View className="bg-amber-50/50 p-6 rounded-[2.5rem] border border-amber-100/50 mb-10">
+                <View className="flex-row items-center gap-2.5 mb-2.5">
+                   <Text className="text-sm">📋</Text>
+                   <Text className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Observación Original (Excel)</Text>
                 </View>
-              ))}
-            </View>
+                <Text className="text-[15px] text-amber-800 font-bold leading-relaxed">{person.observacion || 'Sin observación'}</Text>
+             </View>
+
+             <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">Seleccionar Respuesta</Text>
+             
+             {/* Combobox Style Selection Premium */}
+             <TouchableOpacity 
+                onPress={() => setShowPicker(true)}
+                activeOpacity={0.7}
+                className={`flex-row justify-between items-center p-6 rounded-[2rem] mb-10 border ${person.respuestaObservacion ? 'bg-blue-50/50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}
+             >
+                <View className="flex-1">
+                   {person.respuestaObservacion ? (
+                      <Text className="text-[16px] font-black text-blue-600 tracking-tight">{person.respuestaObservacion}</Text>
+                   ) : (
+                      <Text className="text-[16px] font-bold text-slate-300">Elegir respuesta...</Text>
+                   )}
+                </View>
+                <Text className="text-slate-300 text-lg">▼</Text>
+             </TouchableOpacity>
+
+             <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">Detalles Adicionales</Text>
+             <View className="bg-slate-50/30 rounded-[2.5rem] p-7 border border-slate-100">
+                {person.datosExtra && Object.entries(person.datosExtra).map(([key, value], idx) => (
+                   <View key={key} className={`pb-5 mb-5 ${idx !== Object.keys(person.datosExtra).length - 1 ? 'border-b border-slate-200/30' : ''}`}>
+                      <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
+                      <View className="bg-white/50 p-4 rounded-2xl border border-slate-100/50">
+                        <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
+                      </View>
+                   </View>
+                ))}
+             </View>
           </ScrollView>
 
-          <TouchableOpacity
+          <TouchableOpacity 
             onPress={onClose}
-            className="w-full bg-slate-900 py-6 rounded-3xl flex-row justify-center items-center shadow-xl shadow-slate-300"
+            className="w-full bg-slate-950 py-7 rounded-[2.5rem] flex-row justify-center items-center shadow-2xl shadow-slate-300"
           >
             <Text className="text-white font-black uppercase tracking-widest text-[10px]">Cerrar Detalle</Text>
           </TouchableOpacity>
@@ -152,52 +154,56 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, option
 };
 
 const WorkerCard = memo(({ person, index, onSelectRespuesta, options }) => {
-  const [showDetailModal, setShowDetailModal] = useState(false);
-
-  const isComplete = !!person.respuestaObservacion;
-  const style = isComplete ? STYLES_COMPLETION.active : STYLES_COMPLETION.pending;
+  const [modalVisible, setModalVisible] = useState(false);
+  const status = person.respuestaObservacion ? 'active' : 'pending';
+  const styles = STYLES_COMPLETION[status];
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={() => setShowDetailModal(true)}
-      className="bg-white rounded-[1.8rem] shadow-sm border border-slate-100 mb-3 overflow-hidden flex-row min-h-[80px]"
-    >
-      <View className={`w-1.5 ${style.accent}`} />
+    <>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => setModalVisible(true)}
+        className="mb-4"
+      >
+        <View className={`bg-white rounded-[2.5rem] flex-row items-center border ${styles.border} shadow-sm shadow-blue-50 overflow-hidden`}>
+          {/* Status Indicator Bar */}
+          <View className={`w-2 h-24 ${styles.accent}`} />
+          
+          <View className="flex-1 px-6 py-5 flex-row items-center justify-between">
+            <View className="flex-1 pr-4">
+              <View className="flex-row items-center mb-1.5">
+                <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest">#{index + 1}</Text>
+                {person.respuestaObservacion && (
+                  <View className="ml-3 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                    <Text className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Revisado</Text>
+                  </View>
+                )}
+              </View>
+              <Text className="text-[17px] font-black text-slate-900 tracking-tight mb-1" numberOfLines={1}>
+                {person.nombreCompleto}
+              </Text>
+              <Text className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">DNI: {person.dni || '---'}</Text>
+            </View>
 
-      <View className="flex-1 p-4 flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <View className="w-10 h-10 rounded-2xl items-center justify-center mr-4 bg-slate-50 border border-slate-100">
-            <Text className="font-black text-[10px] text-slate-400">#{index + 1}</Text>
-          </View>
-
-          <View className="flex-1 pr-2">
-            <Text className="text-[15px] font-black text-slate-800 tracking-tight leading-tight" numberOfLines={1}>
-              {person.nombreCompleto}
-            </Text>
-            <Text className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">DNI: {person.dni || '---'}</Text>
+            <View className="items-end">
+              <View className={`w-12 h-12 rounded-[1.5rem] items-center justify-center ${person.respuestaObservacion ? 'bg-blue-50 border border-blue-100' : 'bg-slate-50 border border-slate-100'}`}>
+                <Text className={`text-lg ${person.id % 2 === 0 ? '' : ''}`}>
+                  {person.respuestaObservacion ? '✓' : '📂'}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
-
-        {isComplete ? (
-          <View className="bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
-            <Text className="text-[9px] font-black text-blue-600 uppercase">REVISADO</Text>
-          </View>
-        ) : (
-          <View className="bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-            <Text className="text-[9px] font-black text-slate-300 uppercase">PENDIENTE</Text>
-          </View>
-        )}
-      </View>
+      </TouchableOpacity>
 
       <WorkerDetailModal
-        visible={showDetailModal}
+        visible={modalVisible}
         person={person}
-        onClose={() => setShowDetailModal(false)}
-        onSelectRespuesta={onSelectRespuesta}
         options={options}
+        onSelectRespuesta={onSelectRespuesta}
+        onClose={() => setModalVisible(false)}
       />
-    </TouchableOpacity>
+    </>
   );
 });
 
@@ -357,6 +363,17 @@ export default function ReportDetailScreen() {
   }, [selectedRuta, selectedZona, selectedDigitacion, selectedObsFilter, search, people, digitacionColumn]);
 
   const handleCerrarReporte = async () => {
+    const pendingCount = people.filter(p => !p.respuestaObservacion).length;
+    
+    if (pendingCount > 0) {
+      Alert.alert(
+        "Reporte Incompleto",
+        `Faltan ${pendingCount} trabajadores por revisar. Debes asignar una respuesta a todos antes de finalizar el reporte.`,
+        [{ text: "Entendido" }]
+      );
+      return;
+    }
+
     Alert.alert(
       "Cerrar Reporte",
       "¿Estás seguro de cerrar este reporte? Una vez cerrado no se podrán modificar las observaciones.",
@@ -395,49 +412,53 @@ export default function ReportDetailScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text className="mt-4 text-gray-500 font-bold">Cargando personal...</Text>
+        <Text className="mt-4 text-slate-500 font-bold uppercase tracking-widest text-[9px]">Cargando personal...</Text>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-white">
-      {/* Header Compacto y Organizado */}
-      <View className="bg-white pt-12 border-b border-slate-100 z-10 shadow-sm">
-        <View className="px-6 pb-4 flex-row items-center justify-between">
+      {/* Header Compacto Blue Premium */}
+      <View className="bg-white pt-14 border-b border-slate-100 z-10 shadow-sm">
+        <View className="px-6 pb-6 flex-row items-center justify-between">
            <View className="flex-row items-center flex-1 pr-4">
-              <TouchableOpacity onPress={() => router.back()} className="mr-4">
-                 <Text className="text-xl text-blue-600">←</Text>
+              <TouchableOpacity 
+                onPress={() => router.back()} 
+                activeOpacity={0.7}
+                className="mr-5 w-11 h-11 bg-white rounded-full items-center justify-center border border-slate-200 shadow-sm shadow-slate-100"
+              >
+                 <Text className="text-xl text-blue-600 font-bold">←</Text>
               </TouchableOpacity>
               <View>
-                 <Text className="text-lg font-black text-slate-900 tracking-tighter" numberOfLines={1}>Reporte {report?.date}</Text>
-                 <Text className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ID: {id?.slice(-8).toUpperCase()}</Text>
+                 <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Reporte Diario</Text>
+                 <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>{report?.date}</Text>
               </View>
            </View>
-           <View className="bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-              <Text className="text-[10px] font-black text-blue-600">
+           <View className="bg-blue-600 px-5 py-2.5 rounded-2xl shadow-lg shadow-blue-100 border border-blue-500">
+              <Text className="text-[12px] font-black text-white">
                  {Math.round((people.filter(p => !!p.respuestaObservacion).length / people.length) * 100)}%
               </Text>
            </View>
         </View>
 
-        {/* Micro Barra de Progreso */}
-        <View className="h-[2px] w-full bg-slate-100">
+        {/* Micro Barra de Progreso Neón */}
+        <View className="h-[3px] w-full bg-slate-100">
            <View 
-              className="h-full bg-blue-600 shadow-sm shadow-blue-300" 
+              className="h-full bg-blue-600 shadow-md shadow-blue-400" 
               style={{ width: `${(people.filter(p => !!p.respuestaObservacion).length / people.length) * 100}%` }} 
            />
         </View>
 
         {/* Acción: Buscador y Filtros */}
-        <View className="py-4">
-           {/* Buscador Slim */}
-           <View className="px-6 mb-4">
-              <View className="bg-slate-50 flex-row items-center px-5 py-3 rounded-2xl border border-slate-100">
+        <View className="py-6 bg-slate-50/20">
+           {/* Buscador Premium */}
+           <View className="px-6 mb-5">
+              <View className="bg-white flex-row items-center px-6 py-4 rounded-[1.8rem] border border-slate-200/60 shadow-sm shadow-blue-50/20">
                  <Text className="mr-3 text-base">🔍</Text>
                  <TextInput 
-                   className="flex-1 text-sm text-slate-800 font-bold"
-                   placeholder="Nombre, DNI o Código..."
+                   className="flex-1 text-[15px] text-slate-800 font-bold"
+                   placeholder="Buscar personal..."
                    value={search}
                    onChangeText={setSearch}
                    placeholderTextColor="#cbd5e1"
@@ -445,7 +466,7 @@ export default function ReportDetailScreen() {
               </View>
            </View>
 
-           {/* Chips de Filtro Horizontal */}
+           {/* Chips de Filtro Horizontal Premium */}
            <ScrollView 
              horizontal 
              showsHorizontalScrollIndicator={false} 
@@ -487,12 +508,12 @@ export default function ReportDetailScreen() {
         removeClippedSubviews={false}
         ListEmptyComponent={() => (
           <View className="items-center justify-center py-20 px-10">
-            <View className="bg-slate-50 w-24 h-24 rounded-full items-center justify-center mb-6">
-              <Text className="text-4xl text-slate-300">👥</Text>
+            <View className="bg-slate-50 w-28 h-28 rounded-[3rem] items-center justify-center mb-8 border border-slate-100 shadow-sm shadow-blue-50/20">
+              <Text className="text-5xl">👥</Text>
             </View>
-            <Text className="text-lg font-black text-slate-800 text-center mb-2">No se encontraron trabajadores</Text>
-            <Text className="text-sm text-slate-400 text-center leading-relaxed">
-              Intenta ajustar los filtros o el buscador para encontrar lo que necesitas.
+            <Text className="text-xl font-black text-slate-950 text-center mb-3 tracking-tighter">Sin resultados</Text>
+            <Text className="text-[13px] text-slate-400 text-center leading-relaxed px-4">
+              Ajusta los filtros o cambia los términos de búsqueda para encontrar al personal.
             </Text>
             {(search || selectedRuta !== 'Todas' || selectedZona !== 'Todas' || selectedDigitacion !== 'Todas' || selectedObsFilter !== 'Todas') && (
               <TouchableOpacity
@@ -520,18 +541,35 @@ export default function ReportDetailScreen() {
         )}
       />
 
-      {/* Floating Action Button for Closing Report */}
-      <View className="absolute bottom-0 w-full px-8 py-8 bg-white/90 border-t border-slate-100">
+      {/* Botón de Acción Flotante (Azul Vibrante) */}
+      <View className="absolute bottom-0 w-full px-8 py-10 bg-white/90 border-t border-slate-100 shadow-2xl">
         <TouchableOpacity
           onPress={handleCerrarReporte}
           disabled={saving}
           activeOpacity={0.8}
-          className={`w-full py-5 rounded-[2rem] flex-row justify-center items-center shadow-2xl ${saving ? 'bg-slate-400' : 'bg-rose-600 shadow-rose-200'}`}
+          className={`w-full py-6 rounded-[2.5rem] flex-row justify-center items-center shadow-2xl ${
+            saving 
+              ? 'bg-slate-400' 
+              : (people.filter(p => !p.respuestaObservacion).length > 0 
+                  ? 'bg-slate-800' 
+                  : 'bg-blue-600 shadow-blue-300 border border-blue-500')
+          }`}
         >
           {saving ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white font-black text-xs text-center uppercase tracking-widest">🔒 Guardar y Finalizar</Text>
+            <View className="flex-row items-center gap-3">
+              <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
+                 <Text className="text-white text-base">
+                    {people.filter(p => !p.respuestaObservacion).length > 0 ? '⏳' : '✓'}
+                 </Text>
+              </View>
+              <Text className="text-white font-black text-sm text-center uppercase tracking-widest pt-0.5">
+                 {people.filter(p => !p.respuestaObservacion).length > 0 
+                   ? `Pendientes: ${people.filter(p => !p.respuestaObservacion).length}` 
+                   : 'Finalizar Reporte Ahora'}
+              </Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>

@@ -122,7 +122,12 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
             value={authPass} onChange={e => setAuthPass(e.target.value)} required
           />
-          <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xl shadow-blue-500/20 uppercase tracking-widest text-xs">Ingresar</button>
+          <button 
+            type="submit" 
+            className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xl shadow-blue-600/30 uppercase tracking-widest text-xs border border-blue-500"
+          >
+            Ingresar Sistema
+          </button>
         </form>
       </motion.div>
     </div>
@@ -661,28 +666,28 @@ function ReportTableView({ report, onBack, userData }) {
               <button
                 onClick={handleClose}
                 disabled={saving || !progress.isAllDone}
-                className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm flex-1 sm:flex-none ${progress.isAllDone ? 'bg-slate-900 text-white border-slate-900 hover:bg-blue-600' : 'bg-white text-slate-400 border-slate-200 cursor-not-allowed'}`}
+                className={`px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm flex-1 sm:flex-none ${progress.isAllDone ? 'bg-slate-900 text-white border-slate-900 hover:bg-blue-600 hover:border-blue-600 hover:shadow-blue-200' : 'bg-white text-slate-300 border-slate-100 cursor-not-allowed'}`}
               >
-                {saving ? <Loader2 className="animate-spin" size={14} /> : (progress.isAllDone ? <Lock size={14} /> : <Clock size={14} />)}
-                {progress.isAllDone ? 'Cerrar Reporte' : `Respuestas: ${progress.completed}/${progress.total}`}
+                {saving ? <Loader2 className="animate-spin" size={16} /> : (progress.isAllDone ? <Lock size={16} /> : <Clock size={16} />)}
+                {progress.isAllDone ? 'Finalizar Reporte' : `Pendientes: ${progress.total - progress.completed}`}
               </button>
             )}
 
             <button
               onClick={handleDownloadExcel}
-              className="bg-white text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm flex-1 sm:flex-none"
+              className="bg-white text-slate-700 px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 hover:text-blue-600 hover:border-blue-100 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm flex-1 sm:flex-none"
             >
-              <FileSpreadsheet size={14} />
-              Descargar Excel
+              <FileSpreadsheet size={16} className="text-blue-600" />
+              Exportar a Excel
             </button>
 
             {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
               <button
                 onClick={handleDelete}
                 disabled={saving}
-                className="bg-white text-red-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 border border-red-100 shadow-sm flex-1 sm:flex-none"
+                className="bg-white text-red-500 px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center gap-2 border border-red-100 shadow-sm flex-1 sm:flex-none"
               >
-                {saving ? <Loader2 className="animate-spin" size={14} /> : <Trash2 size={14} />}
+                {saving ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
                 Eliminar
               </button>
             )}
@@ -741,20 +746,26 @@ function ReportTableView({ report, onBack, userData }) {
                     );
                   })}
                   <td className="px-3 py-1.5 bg-white group-hover:bg-blue-50 sticky right-0 z-30 border-b border-l border-blue-100" style={{ width: '220px' }}>
-                    <div className="relative">
+                    <div className="relative group/select">
                       <select
                         value={p.respuestaObservacion || ''}
                         onChange={(e) => updateRespuesta(p.id, e.target.value)}
                         disabled={['CLOSED', 'CERRADO'].includes(report.status)}
-                        className={`w-full border rounded-md px-2 py-1 text-[10px] font-bold outline-none transition-all appearance-none cursor-pointer ${['CLOSED', 'CERRADO'].includes(report.status) ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-500' : (!p.respuestaObservacion ? 'bg-red-50/30 border-red-100 text-red-500 hover:bg-red-50' : 'bg-slate-50 border-slate-100 text-slate-700 hover:bg-white')}`}
+                        className={`w-full border rounded-xl px-4 py-2 text-[11px] font-bold outline-none transition-all appearance-none cursor-pointer pr-8 ${
+                          ['CLOSED', 'CERRADO'].includes(report.status) 
+                            ? 'opacity-50 cursor-not-allowed bg-slate-50 border-slate-100 text-slate-400' 
+                            : (!p.respuestaObservacion 
+                               ? 'bg-blue-50/30 border-blue-100 text-blue-600 hover:bg-blue-50 focus:ring-2 focus:ring-blue-100' 
+                               : 'bg-slate-50 border-slate-100 text-slate-700 hover:bg-white hover:border-blue-200 focus:ring-2 focus:ring-blue-100')
+                        }`}
                       >
                         <option value="" disabled>--- Seleccione ---</option>
                         {OBSERVACIONES.map(obs => (
                           <option key={obs} value={obs}>{obs}</option>
                         ))}
                       </select>
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                        <ChevronRight className="rotate-90" size={12} />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300 group-hover/select:text-blue-500 transition-colors">
+                        <ChevronRight className="rotate-90" size={14} />
                       </div>
                     </div>
                   </td>
