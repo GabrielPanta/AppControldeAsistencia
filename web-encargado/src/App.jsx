@@ -99,8 +99,12 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
     ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label) 
     : placeholder;
 
-  // Si el label ya contiene el placeholder (como en Digitación: Todas), no lo repetimos
-  const displayValue = (placeholder && !selectedLabel.includes(placeholder))
+  const shouldAddPrefix = placeholder && 
+                         !selectedLabel.includes(placeholder) && 
+                         !placeholder.includes('---') && 
+                         !placeholder.toLowerCase().includes('seleccionar');
+
+  const displayValue = shouldAddPrefix
     ? `${placeholder}: ${selectedLabel}`
     : selectedLabel;
 
@@ -1670,19 +1674,21 @@ function ReportTableView({ report, onBack, userData }) {
                       style={{ width: '180px' }}
                     >
                       <div className="flex items-center gap-2">
-                        <CustomDropdown
-                          value={p.respuestaObservacion || ''}
-                          options={['', ...OBSERVACIONES]}
-                          onChange={(val) => updateRespuesta(p.id, val)}
-                          onOpenChange={(open) => setActiveDropdown(open ? p.id : null)}
-                          placeholder="--- Seleccione ---"
-                          className="flex-1"
-                          isCompact={true}
-                          disabled={['CLOSED', 'CERRADO'].includes(report.status)}
-                        />
+                        <div className="flex-1 min-w-0">
+                          <CustomDropdown
+                            value={p.respuestaObservacion || ''}
+                            options={['', ...OBSERVACIONES]}
+                            onChange={(val) => updateRespuesta(p.id, val)}
+                            onOpenChange={(open) => setActiveDropdown(open ? p.id : null)}
+                            placeholder="--- Seleccione ---"
+                            className="w-full"
+                            isCompact={true}
+                            disabled={['CLOSED', 'CERRADO'].includes(report.status)}
+                          />
+                        </div>
                         <button 
                           onClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
-                          className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                          className="flex-shrink-0 p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                           title="Editar todos los datos"
                         >
                           <User size={14} />
