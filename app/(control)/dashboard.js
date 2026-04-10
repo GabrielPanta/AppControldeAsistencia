@@ -1,11 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList, Alert, StatusBar, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, FlatList, Alert, StatusBar, SafeAreaView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../firebaseConfig';
 import { useAuth } from '../../context/auth';
 import { useRouter } from 'expo-router';
 
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '---';
+  const s = String(dateStr).trim();
+  
+  // 1. Caso DD/MM/YYYY o D/M/YYYY
+  const slashParts = s.split('/');
+  if (slashParts.length === 3) {
+    const day = slashParts[0].padStart(2, '0');
+    const month = slashParts[1].padStart(2, '0');
+    let year = slashParts[2].split(' ')[0]; // Quitar hora si existe
+    if (year.length === 2) year = '20' + year;
+    return `${day}/${month}/${year}`;
+  }
+
+  // 2. Caso YYYY-MM-DD o similar (ISO)
+  if (s.includes('-')) {
+    const dashParts = s.split('T')[0].split('-');
+    if (dashParts.length === 3) {
+      if (dashParts[0].length === 4) { // YYYY-MM-DD
+        return `${dashParts[2].padStart(2, '0')}/${dashParts[1].padStart(2, '0')}/${dashParts[0]}`;
+      } else { // DD-MM-YYYY
+        return `${dashParts[0].padStart(2, '0')}/${dashParts[1].padStart(2, '0')}/${dashParts[2]}`;
+      }
+    }
+  }
+
+  // 3. Fallback a objeto Date
+  const d = new Date(s);
+  if (!isNaN(d.getTime()) && s.length > 5) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return s;
+};
+
+const getCompanyName = (id) => {
+  switch (String(id)) {
+    case '9': return 'Rapel';
+    case '14': return 'Verfrut';
+    case '23': return 'Avanti';
+    default: return 'Desconocida';
+  }
+};
+
 export default function ControlDashboard() {
+  const insets = useSafeAreaInsets();
   const { userData } = useAuth();
   const [reports, setReports] = useState([]);
   const [reportStats, setReportStats] = useState({});
@@ -98,9 +147,9 @@ export default function ControlDashboard() {
                   {percentage === 100 ? 'Revisión Completa' : 'Avance del Reporte'}
                 </Text>
               </View>
-              <Text className="text-[19px] font-black text-slate-900 tracking-tighter">Día {item.date}</Text>
+              <Text className="text-[19px] font-black text-slate-900 tracking-tighter">Día {formatDisplayDate(item.date)}</Text>
               <Text className="text-[11px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
-                Empresa: {item.companyId === '9' ? 'Rapel' : 'Verfrut'}
+                Empresa: {getCompanyName(item.companyId)}
               </Text>
             </View>
           </View>
@@ -134,7 +183,10 @@ export default function ControlDashboard() {
       <StatusBar barStyle="dark-content" />
 
       {/* Header Premium con Estilo de Pantalla de Monitoreo */}
-      <View className="px-6 pt-6 pb-10 bg-white border-b border-slate-100 shadow-sm">
+      <View 
+        style={{ paddingTop: Platform.OS === 'android' ? insets.top + 25 : 20 }}
+        className="px-6 pb-10 bg-white border-b border-slate-100 shadow-sm"
+      >
         <View className="flex-row justify-between items-center mb-10">
           <View className="flex-row items-center">
             <View className="relative">
@@ -152,7 +204,7 @@ export default function ControlDashboard() {
                 {userData?.name ? userData.name.split(' ')[0] : 'Admin'}
               </Text>
               <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
-                {userData?.role || 'Sistema'} • {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'}
+                {userData?.role || 'Sistema'} • {getCompanyName(userData?.companyId)}
               </Text>
             </View>
           </View>
@@ -210,7 +262,7 @@ export default function ControlDashboard() {
             </View>
             <View className="px-1">
               <Text className="text-white text-[17px] font-black tracking-tighter mb-1" numberOfLines={1}>
-                {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'}
+                {getCompanyName(userData?.companyId)}
               </Text>
               <Text className="text-indigo-500 text-[9px] font-black uppercase tracking-widest">Sede Central</Text>
             </View>

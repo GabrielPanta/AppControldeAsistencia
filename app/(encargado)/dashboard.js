@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, FlatList, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, ActivityIndicator, FlatList, StatusBar, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -26,7 +27,55 @@ const formatDateToES = (date) => {
   return `${day}/${month}/${year}`;
 };
 
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return '---';
+  const s = String(dateStr).trim();
+  
+  // 1. Caso DD/MM/YYYY o D/M/YYYY
+  const slashParts = s.split('/');
+  if (slashParts.length === 3) {
+    const day = slashParts[0].padStart(2, '0');
+    const month = slashParts[1].padStart(2, '0');
+    let year = slashParts[2].split(' ')[0]; // Quitar hora si existe
+    if (year.length === 2) year = '20' + year;
+    return `${day}/${month}/${year}`;
+  }
+
+  // 2. Caso YYYY-MM-DD o similar (ISO)
+  if (s.includes('-')) {
+    const dashParts = s.split('T')[0].split('-');
+    if (dashParts.length === 3) {
+      if (dashParts[0].length === 4) { // YYYY-MM-DD
+        return `${dashParts[2].padStart(2, '0')}/${dashParts[1].padStart(2, '0')}/${dashParts[0]}`;
+      } else { // DD-MM-YYYY
+        return `${dashParts[0].padStart(2, '0')}/${dashParts[1].padStart(2, '0')}/${dashParts[2]}`;
+      }
+    }
+  }
+
+  // 3. Fallback a objeto Date
+  const d = new Date(s);
+  if (!isNaN(d.getTime()) && s.length > 5) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return s;
+};
+
+const getCompanyName = (id) => {
+  switch (String(id)) {
+    case '9': return 'Rapel';
+    case '14': return 'Verfrut';
+    case '23': return 'Avanti';
+    default: return 'Desconocida';
+  }
+};
+
 export default function EncargadoDashboard() {
+  const insets = useSafeAreaInsets();
   const { userData, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [reports, setReports] = useState([]);
@@ -171,10 +220,10 @@ export default function EncargadoDashboard() {
       reader.onload = async (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: "dd/mm/yyyy" });
           if (jsonData.length < 2) {
             Alert.alert('Error', 'Excel vacío.');
             setLoading(false);
@@ -187,9 +236,13 @@ export default function EncargadoDashboard() {
           const codeIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('CODIGO'));
           const dateIndex = headers.findIndex(h => typeof h === 'string' && h.toUpperCase().includes('FECHA'));
           let reportDate = formatDateToES(new Date());
-          if (dateIndex !== -1 && rows[0] && rows[0][dateIndex]) {
-             const rawDate = rows[0][dateIndex];
-             reportDate = typeof rawDate === 'number' ? formatDateToES(excelDateToJSDate(rawDate)) : String(rawDate);
+          if (dateIndex !== -1) {
+            // Buscamos la primera fila con datos para extraer la fecha si está disponible
+            const firstValidRow = rows.find(r => r && r[nameIndex] && r[dateIndex]);
+            if (firstValidRow && firstValidRow[dateIndex]) {
+              const val = firstValidRow[dateIndex];
+              reportDate = (val instanceof Date) ? formatDateToES(val) : String(val).trim();
+            }
           }
           const reportRef = await addDoc(collection(db, 'reports'), {
             companyId: userData.companyId || 'N/A',
@@ -237,7 +290,10 @@ export default function EncargadoDashboard() {
       <StatusBar barStyle="dark-content" />
       
       {/* Header Premium */}
-      <View className="px-6 pt-12 pb-10 bg-white border-b border-slate-100 shadow-sm rounded-b-[3.5rem] z-10">
+      <View 
+        style={{ paddingTop: Platform.OS === 'android' ? insets.top + 25 : 20 }}
+        className="px-6 pb-10 bg-white border-b border-slate-100 shadow-sm rounded-b-[3.5rem] z-10"
+      >
          <View className="flex-row justify-between items-center mb-8">
             <View className="flex-row items-center">
                <View className="relative">
@@ -255,7 +311,7 @@ export default function EncargadoDashboard() {
                     {userData?.name ? userData.name.split(' ')[0] : 'Encargado'}
                   </Text>
                   <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">
-                    {userData?.role || 'Personal'} • {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'}
+                    {userData?.role || 'Personal'} • {getCompanyName(userData?.companyId)}
                   </Text>
                </View>
             </View>
@@ -282,7 +338,7 @@ export default function EncargadoDashboard() {
             <View className="flex-row items-center mt-1">
                <View className="w-2 h-2 rounded-full bg-indigo-500 mr-2" />
                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                 {userData?.companyId === '9' ? 'Rapel' : 'Verfrut'} (Empresa {userData?.companyId})
+                 {getCompanyName(userData?.companyId)} (Empresa {userData?.companyId})
                </Text>
             </View>
          </View>
@@ -338,7 +394,7 @@ export default function EncargadoDashboard() {
                           {item.status === 'CLOSED' ? 'Finalizado' : 'Abierto'}
                        </Text>
                     </View>
-                    <Text className="text-base font-black text-slate-900 tracking-tighter">Día {item.date}</Text>
+                    <Text className="text-base font-black text-slate-900 tracking-tighter">Día {formatDisplayDate(item.date)}</Text>
                  </View>
                  <View className="flex-row items-center gap-2">
                     {item.status === 'CLOSED' && (

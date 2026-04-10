@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, SafeAreaView, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, SafeAreaView, StatusBar, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db, firebaseConfig } from '../firebaseConfig';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -32,7 +34,10 @@ export default function RegisterScreen() {
     try {
       setLoading(true);
       
-      const secondaryApp = initializeApp(firebaseConfig, "SecondaryAppRegister");
+      let secondaryApp = getApps().find(a => a.name === "SecondaryAppRegister");
+      if (!secondaryApp) {
+        secondaryApp = initializeApp(firebaseConfig, "SecondaryAppRegister");
+      }
       const secondaryAuth = getAuth(secondaryApp);
       
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
@@ -47,8 +52,11 @@ export default function RegisterScreen() {
       });
 
       await signOut(secondaryAuth);
-      // No standard way to delete app in RN directly without potential issues, but we can just leave it or try:
-      // await secondaryApp.delete();
+      try {
+        await deleteApp(secondaryApp);
+      } catch (e) {
+        console.log("Error deleting secondary app:", e);
+      }
 
       Alert.alert('Éxito', 'Usuario creado correctamente.', [
         { text: 'Aceptar', onPress: () => router.back() }
@@ -68,7 +76,11 @@ export default function RegisterScreen() {
       <SafeAreaView className="flex-1">
         <ScrollView 
           className="flex-1" 
-          contentContainerStyle={{ padding: 24, paddingTop: 20, paddingBottom: 60 }}
+          contentContainerStyle={{ 
+            padding: 24, 
+            paddingTop: Platform.OS === 'android' ? insets.top + 20 : 20, 
+            paddingBottom: 60 
+          }}
           showsVerticalScrollIndicator={false}
         >
           {/* Back Button - Moved down for better accessibility */}
@@ -148,7 +160,8 @@ export default function RegisterScreen() {
               <View className="flex-row gap-3">
                 {[
                   { id: '9', name: 'Rapel' },
-                  { id: '14', name: 'Verfrut' }
+                  { id: '14', name: 'Verfrut' },
+                  { id: '23', name: 'Avanti' }
                 ].map((c) => (
                   <TouchableOpacity 
                     key={c.id}
