@@ -95,9 +95,14 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
     (typeof o === 'string' ? o : o.value) === value
   );
   
-  const displayValue = selectedOption 
+  const selectedLabel = selectedOption 
     ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label) 
     : placeholder;
+
+  // Si el label ya contiene el placeholder (como en Digitación: Todas), no lo repetimos
+  const displayValue = (placeholder && !selectedLabel.includes(placeholder))
+    ? `${placeholder}: ${selectedLabel}`
+    : selectedLabel;
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -159,9 +164,27 @@ const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) =>
   const handleSave = async () => {
     try {
       setSaving(true);
+      
+      // Calcular qué campos fueron modificados realmente
+      const modifiedFields = { ...(person.modifiedFields || {}) };
+      
+      // Comparar datos principales
+      if (formData.nombreCompleto !== person.nombreCompleto) modifiedFields['NOMBRE'] = true;
+      if (formData.dni !== person.dni) modifiedFields['DNI'] = true;
+      
+      // Comparar datos extra
+      Object.keys(formData.datosExtra).forEach(key => {
+        const newVal = String(formData.datosExtra[key] || '').trim();
+        const oldVal = String(person.datosExtra?.[key] || '').trim();
+        if (newVal !== oldVal) {
+          modifiedFields[key] = true;
+        }
+      });
+
       const pRef = doc(db, `reports/${reportId}/people`, person.id);
       const updatedData = {
         ...formData,
+        modifiedFields,
         edited: true
       };
       await updateDoc(pRef, updatedData);
@@ -206,13 +229,13 @@ const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) =>
               <div className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nombre Completo</label>
-                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-400 cursor-not-allowed">
+                  <div className={`w-full border border-slate-200 rounded-xl px-4 py-3 font-bold cursor-not-allowed ${person.modifiedFields?.['NOMBRE'] ? 'bg-amber-100/50 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
                     {formData.nombreCompleto}
                   </div>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">DNI</label>
-                  <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-400 cursor-not-allowed">
+                  <div className={`w-full border border-slate-200 rounded-xl px-4 py-3 font-bold cursor-not-allowed ${person.modifiedFields?.['DNI'] ? 'bg-amber-100/50 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
                     {formData.dni || '---'}
                   </div>
                 </div>
@@ -227,14 +250,18 @@ const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) =>
                   return !k.includes('NOMBRE') && !k.includes('TRABAJADOR') && !k.includes('PERSONAL') && !k.includes('DNI') && !k.includes('IDENTIFICACION');
                 }).map((key, idx) => {
                   const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
-                  const value = formData.datosExtra[key];
+                  const originalValue = person.datosExtra?.[key];
+                  const isModifiedInCurrentSession = String(value || '').trim() !== String(originalValue || '').trim();
+                  const isPersistedAsModified = !!person.modifiedFields?.[key];
+                  const isHighlighted = isModifiedInCurrentSession || isPersistedAsModified;
+
                   return (
                     <div key={`${key}-${idx}`}>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">{key}</label>
                       {isEditable ? (
                         <input 
                           type="text" 
-                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 focus:ring-4 focus:ring-blue-100 outline-none transition-all"
+                          className={`w-full border rounded-xl px-4 py-3 font-bold text-slate-800 transition-all outline-none ${isHighlighted ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-100 text-amber-900' : 'bg-white border-slate-200 focus:ring-4 focus:ring-blue-100'}`}
                           value={value || ''} 
                           onChange={e => setFormData({ 
                             ...formData, 
@@ -1613,13 +1640,18 @@ function ReportTableView({ report, onBack, userData }) {
                       const isSticky = stickyConfig.stickySet.has(col);
                       const isLast = col === stickyConfig.lastCol;
                       const w = getColWidth(col);
-                      const val = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] : (col === 'OBSERVACION' ? p.observacion : '');
+                      const isModified = col === 'NOMBRE' ? p.modifiedFields?.['NOMBRE'] : (col === 'DNI' ? p.modifiedFields?.['DNI'] : !!p.modifiedFields?.[col]);
+                      const val = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] : 
+                                 (col === 'NOMBRE' ? p.nombreCompleto : 
+                                 (col === 'DNI' ? p.dni : 
+                                 (col === 'CODIGO' ? p.codigo : 
+                                 (col === 'OBSERVACION' ? p.observacion : ''))));
 
                       return (
                           <td
                             key={col}
                             onDoubleClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
-                            className={`px-2 py-1 text-[10px] font-medium text-slate-700 border-b cursor-pointer ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' + (isEdited ? 'bg-amber-50/10' : 'bg-white') : ''} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
+                            className={`px-2 py-1 text-[10px] font-medium border-b cursor-pointer ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' : ''} ${isModified ? 'bg-amber-100/30 text-amber-900 border-amber-200' : (isSticky ? (isEdited ? 'bg-amber-50/10' : 'bg-white') : 'text-slate-700')} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
                           style={{
                             left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
                             width: `${w}px`,

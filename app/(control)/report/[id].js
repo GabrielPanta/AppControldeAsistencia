@@ -229,10 +229,12 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
                   }).map((key, idx, arr) => {
                     const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
                     const value = person.datosExtra?.[key];
+                    const isPersistedModified = !!person.modifiedFields?.[key];
+
                     return (
                       <View key={`${key}-${idx}`} className={`pb-5 mb-5 ${idx !== arr.length - 1 ? 'border-b border-slate-200/30' : ''}`}>
                          <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
-                         <View className="bg-white/50 p-4 rounded-2xl border border-slate-100/50">
+                         <View className={`p-4 rounded-2xl border ${isPersistedModified ? 'bg-amber-100/50 border-amber-200' : 'bg-white/50 border-slate-100/50'}`}>
                            {isEditing && isEditable ? (
                              <TextInput
                                className="text-[15px] font-bold text-slate-800 tracking-tight"
@@ -243,7 +245,7 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
                                }))}
                              />
                            ) : (
-                             <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
+                             <Text className={`text-[15px] font-bold tracking-tight ${isPersistedModified ? 'text-amber-900' : 'text-slate-800'}`}>{String(value || '---').trim()}</Text>
                            )}
                          </View>
                       </View>
@@ -512,8 +514,24 @@ export default function ReportDetailScreen() {
   const updatePersonData = async (personId, newData) => {
     try {
       const pRef = doc(db, `reports/${thisId}/people`, personId);
+      const person = people.find(p => p.id === personId);
+      
+      const modifiedFields = { ...(person.modifiedFields || {}) };
+      
+      if (newData.nombreCompleto !== person.nombreCompleto) modifiedFields['NOMBRE'] = true;
+      if (newData.dni !== person.dni) modifiedFields['DNI'] = true;
+      
+      if (newData.datosExtra) {
+        Object.keys(newData.datosExtra).forEach(k => {
+          if (String(newData.datosExtra[k] || '').trim() !== String(person.datosExtra?.[k] || '').trim()) {
+            modifiedFields[k] = true;
+          }
+        });
+      }
+
       const updatePayload = {
         ...newData,
+        modifiedFields,
         edited: true
       };
       await updateDoc(pRef, updatePayload);
