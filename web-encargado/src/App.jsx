@@ -8,7 +8,7 @@ import ExcelJS from 'exceljs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle,
-  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick, BarChart3, PieChart as PieIcon, LineChart as LineIcon, TrendingUp, Users, Map
+  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick, BarChart3, PieChart as PieIcon, LineChart as LineIcon, TrendingUp, Users, Map, UploadCloud, Bus, RotateCcw, Fingerprint, MapPin
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -114,22 +114,26 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between transition-all outline-none ${isCompact ? 'px-3 py-2 rounded-xl text-[10px]' : 'px-4 py-3 rounded-xl text-[10px]'} font-bold ${isOpen ? 'ring-4 ring-blue-100 bg-white border-blue-200 shadow-sm' : 'bg-slate-50 border-transparent'} border text-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'hover:bg-white hover:border-slate-200'}`}
+        className={`w-full flex items-center justify-between transition-all outline-none ${isCompact ? 'px-3 py-0.5 rounded-lg text-[9px]' : 'px-5 py-2.5 rounded-xl text-[10px]'} font-black uppercase tracking-widest ${isOpen ? 'ring-2 ring-blue-100 bg-white border-blue-200' : 'bg-slate-50 border-transparent'} border text-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'hover:bg-white hover:border-slate-200'}`}
       >
-        <span className="truncate pr-2">{displayValue}</span>
-        <ChevronRight className={`transition-transform duration-300 ${isOpen ? '-rotate-90' : 'rotate-90 text-slate-300'}`} size={14} />
+        <span className="whitespace-normal leading-tight text-left flex-1 pr-2">{displayValue}</span>
+        <ChevronRight className={`transition-transform duration-300 ${isOpen ? '-rotate-90' : 'rotate-90 text-slate-300'}`} size={12} />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: 5, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className={`absolute z-[100] w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden py-2 ${isCompact ? 'left-auto right-0 min-w-[200px]' : 'left-0'}`}
+            exit={{ opacity: 0, y: 5, scale: 0.98 }}
+            className={`absolute z-[110] mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden py-2 ${
+              isCompact 
+                ? 'right-0 min-w-[220px] w-max max-w-[320px]' 
+                : 'left-0 min-w-full w-max max-w-[400px]'
+            } shadow-indigo-500/10`}
             style={{ top: '100%' }}
           >
-            <div className="max-h-60 overflow-y-auto custom-scrollbar">
+            <div className="max-h-[400px] overflow-y-auto custom-scrollbar px-1.5">
               {options.map((opt, i) => {
                 const optVal = typeof opt === 'string' ? opt : opt.value;
                 const optLabel = typeof opt === 'string' ? opt : opt.label;
@@ -139,13 +143,21 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
                   <button
                     key={i}
                     type="button"
+                    title={optLabel}
                     onClick={() => {
                       onChange(optVal);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-5 py-3 text-[10px] font-bold transition-all ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-50 hover:pl-6'}`}
+                    className={`w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl mb-1 last:mb-0 ${
+                      isActive 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'
+                    }`}
                   >
-                    {optLabel}
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex-1 leading-relaxed whitespace-normal break-words">{optLabel}</span>
+                      {isActive && <CheckCircle className="mt-0.5 flex-shrink-0" size={10} />}
+                    </div>
                   </button>
                 );
               })}
@@ -157,7 +169,7 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
   );
 };
 
-const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) => {
+const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     nombreCompleto: person.nombreCompleto || '',
     dni: person.dni || '',
@@ -167,6 +179,10 @@ const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) =>
 
   const handleSave = async () => {
     try {
+      if (['CLOSED', 'CERRADO'].includes(reportStatus)) {
+        alert("No se puede editar un trabajador en un reporte cerrado.");
+        return;
+      }
       setSaving(true);
       
       // Calcular qué campos fueron modificados realmente
@@ -202,104 +218,116 @@ const WorkerEditModal = ({ person, reportId, tableColumns, onClose, onSave }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
       />
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
         animate={{ opacity: 1, scale: 1, y: 0 }} 
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100"
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        className="relative bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
       >
-        <div className="p-10">
-          <div className="flex justify-between items-start mb-10">
-            <div>
-              <p className="text-blue-500 text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px]">✏️</span> Editando Trabajador
-              </p>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tighter">Ficha de Datos</h3>
+        <div className="p-8 pb-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+              <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Edición Profesional</p>
             </div>
-            <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-all">
-              <X size={20} />
-            </button>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Ficha del Trabajador</h3>
           </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100">
+            <X size={18} />
+          </button>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[50vh] overflow-y-auto px-2">
-            <div className="space-y-4">
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Datos Principales</p>
-              <div className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Nombre Completo</label>
-                  <div className={`w-full border border-slate-200 rounded-xl px-4 py-3 font-bold cursor-not-allowed ${person.modifiedFields?.['NOMBRE'] ? 'bg-amber-100/50 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
-                    {formData.nombreCompleto}
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">DNI</label>
-                  <div className={`w-full border border-slate-200 rounded-xl px-4 py-3 font-bold cursor-not-allowed ${person.modifiedFields?.['DNI'] ? 'bg-amber-100/50 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
-                    {formData.dni || '---'}
-                  </div>
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
+          {/* DATOS PRINCIPALES: 2 COLUMNAS */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <User size={14} /> Información Personal
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+                <div className={`w-full border rounded-xl px-4 py-2.5 font-bold text-[11px] cursor-not-allowed ${person.modifiedFields?.['NOMBRE'] ? 'bg-amber-100/30 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400 border-transparent'}`}>
+                  {formData.nombreCompleto}
                 </div>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Datos Extra</p>
-              <div className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
-                {tableColumns.filter(key => {
-                  const k = key.toUpperCase().trim();
-                  return !k.includes('NOMBRE') && !k.includes('TRABAJADOR') && !k.includes('PERSONAL') && !k.includes('DNI') && !k.includes('IDENTIFICACION');
-                }).map((key, idx) => {
-                  const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
-                  const originalValue = person.datosExtra?.[key];
-                  const isModifiedInCurrentSession = String(value || '').trim() !== String(originalValue || '').trim();
-                  const isPersistedAsModified = !!person.modifiedFields?.[key];
-                  const isHighlighted = isModifiedInCurrentSession || isPersistedAsModified;
-
-                  return (
-                    <div key={`${key}-${idx}`}>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">{key}</label>
-                      {isEditable ? (
-                        <input 
-                          type="text" 
-                          className={`w-full border rounded-xl px-4 py-3 font-bold text-slate-800 transition-all outline-none ${isHighlighted ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-100 text-amber-900' : 'bg-white border-slate-200 focus:ring-4 focus:ring-blue-100'}`}
-                          value={value || ''} 
-                          onChange={e => setFormData({ 
-                            ...formData, 
-                            datosExtra: { ...formData.datosExtra, [key]: e.target.value } 
-                          })}
-                        />
-                      ) : (
-                        <div className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-400 cursor-not-allowed">
-                          {value || '---'}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Documento DNI</label>
+                <div className={`w-full border rounded-xl px-4 py-2.5 font-bold text-[11px] cursor-not-allowed ${person.modifiedFields?.['DNI'] ? 'bg-amber-100/30 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
+                  {formData.dni || '---'}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-10 pt-8 border-t border-slate-50 flex items-center gap-4">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 bg-indigo-600 hover:bg-blue-600 text-white py-5 rounded-3xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-100"
-            >
-              {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              Guardar Cambios
-            </button>
-            <button
-              onClick={onClose}
-              className="px-10 bg-slate-50 text-slate-400 py-5 rounded-3xl font-black uppercase tracking-widest text-xs hover:bg-slate-100 transition-all border border-slate-100"
-            >
-              Cancelar
-            </button>
+          {/* DATOS EXTRA: 3 COLUMNAS */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Map size={14} /> Datos de Gestión e Identificación
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-5">
+              {tableColumns.filter(key => {
+                const k = key.toUpperCase().trim();
+                return !k.includes('NOMBRE') && !k.includes('TRABAJADOR') && !k.includes('PERSONAL') && !k.includes('DNI') && !k.includes('IDENTIFICACION');
+              }).map((key, idx) => {
+                const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
+                const originalValue = person.datosExtra?.[key];
+                const value = formData.datosExtra?.[key];
+                const isModifiedInCurrentSession = String(value || '').trim() !== String(originalValue || '').trim();
+                const isPersistedAsModified = !!person.modifiedFields?.[key];
+                const isHighlighted = isModifiedInCurrentSession || isPersistedAsModified;
+
+                return (
+                  <div key={`${key}-${idx}`} className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 truncate block">
+                      {key} {isHighlighted && <span className="text-amber-500 ml-1">★</span>}
+                    </label>
+                    {isEditable ? (
+                      <input 
+                        type="text" 
+                        className={`w-full border rounded-xl px-4 py-2.5 font-black text-[11px] transition-all outline-none 
+                          ${isHighlighted 
+                            ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-100 text-amber-900' 
+                            : 'bg-white border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-800'
+                          }`}
+                        value={value || ''} 
+                        onChange={e => setFormData({ 
+                          ...formData, 
+                          datosExtra: { ...formData.datosExtra, [key]: e.target.value } 
+                        })}
+                      />
+                    ) : (
+                      <div className="w-full bg-slate-50 border border-transparent rounded-xl px-4 py-2.5 font-bold text-[11px] text-slate-400 cursor-not-allowed truncate">
+                        {value || '---'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        </div>
+
+        <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
+          <button
+            onClick={onClose}
+            className="px-8 bg-white text-slate-400 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all border border-slate-200"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-10 bg-indigo-600 hover:bg-blue-600 text-white py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+            Guardar Cambios
+          </button>
         </div>
       </motion.div>
     </div>
@@ -400,7 +428,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       <Header userData={userData} handleLogout={handleLogout} setView={setCurrentView} />
-      <main className="flex-1 w-full mx-auto p-4 md:p-10">
+      <main className="flex-1 w-full mx-auto p-4 md:px-10 md:py-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
@@ -457,7 +485,7 @@ function Header({ userData, handleLogout, setView }) {
   const isAdmin = (auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe';
 
   return (
-    <header className="bg-white border-b border-slate-100 px-8 py-5 flex justify-between items-center sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-slate-100 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
       <div 
         className="flex items-center gap-5 cursor-pointer" 
         onClick={() => setView('dashboard')}
@@ -707,6 +735,16 @@ function RegisterUserView({ onBack }) {
 function DashboardView({ userData, onSelectReport }) {
   const [reports, setReports] = useState([]);
   const [uploading, setUploading] = useState(false);
+  
+  // Filtros
+  const [dashSearch, setDashSearch] = useState('');
+  const [dashMonth, setDashMonth] = useState('Todos');
+  const [dashYear, setDashYear] = useState('Todos');
+
+  const MONTHS = [
+    'Todos', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
 
   const fetchReports = async () => {
     if (!userData?.companyId) return;
@@ -808,44 +846,263 @@ function DashboardView({ userData, onSelectReport }) {
     } catch (e) { alert(e.message); } finally { setUploading(false); }
   };
 
+  const availableYears = useMemo(() => {
+    const years = new Set(['Todos']);
+    reports.forEach(r => {
+      if (r.date) {
+        const parts = String(r.date).split('/');
+        if (parts.length === 3) years.add(parts[2]);
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [reports]);
+
+  const filteredReports = useMemo(() => {
+    return reports.filter(r => {
+      const dateStr = String(r.date || '');
+      const parts = dateStr.split('/');
+      
+      const matchSearch = dateStr.toLowerCase().includes(dashSearch.toLowerCase());
+      
+      let matchMonth = true;
+      if (dashMonth !== 'Todos' && parts.length === 3) {
+        const mIdx = parseInt(parts[1], 10);
+        matchMonth = MONTHS[mIdx] === dashMonth;
+      }
+      
+      let matchYear = true;
+      if (dashYear !== 'Todos' && parts.length === 3) {
+        matchYear = parts[2] === dashYear;
+      }
+
+      return matchSearch && matchMonth && matchYear;
+    });
+  }, [reports, dashSearch, dashMonth, dashYear]);
+
+  const globalStats = useMemo(() => {
+    let totalW = 0;
+    let reviewedW = 0;
+    const obsMap = {};
+
+    filteredReports.forEach(r => {
+      totalW += (r.totalWorkers || 0);
+      reviewedW += (r.reviewedWorkers || 0);
+      if (r.responseBreakdown) {
+        Object.entries(r.responseBreakdown).forEach(([key, val]) => {
+          obsMap[key] = (obsMap[key] || 0) + val;
+        });
+      }
+    });
+
+    const topObs = Object.entries(obsMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    return { 
+      totalWorkers: totalW, 
+      reviewedWorkers: reviewedW, 
+      topObs,
+      percent: totalW > 0 ? Math.round((reviewedW / totalW) * 100) : 0
+    };
+  }, [filteredReports]);
+
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="grid grid-cols-1 lg:grid-cols-4 gap-8"
+    >
+      {/* PANEL IZQUIERDO: CARGA */}
       {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
-        <div className="col-span-1">
-          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-6 text-xl tracking-tight">Subida de Excel</h3>
-            <label className="block border-2 border-dashed border-slate-200 p-10 rounded-[2rem] text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-all group">
-              <Upload className="mx-auto mb-4 text-slate-300 group-hover:text-blue-500 transition-colors" size={40} />
-              <span className="block font-bold text-slate-500 group-hover:text-blue-600 text-sm">Importar Archivo</span>
-              <input type="file" className="hidden" accept=".xlsx" onChange={e => processFile(e.target.files[0])} />
+        <div className="lg:col-span-1 space-y-6">
+          <motion.div 
+            whileHover={{ y: -2 }}
+            className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/20"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <UploadCloud size={20} />
+              </div>
+              <h3 className="font-black text-slate-800 text-lg tracking-tighter">Subida de Excel</h3>
+            </div>
+
+            <label className="relative block group">
+              <input type="file" className="hidden" accept=".xlsx" onChange={e => processFile(e.target.files[0])} disabled={uploading} />
+              <div className={`
+                border-2 border-dashed rounded-[2rem] p-10 text-center transition-all cursor-pointer
+                ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-slate-100 group-hover:bg-blue-50/50 group-hover:border-blue-300 group-hover:shadow-lg group-hover:shadow-blue-500/5'}
+              `}>
+                <div className="relative mx-auto mb-4 w-16 h-16">
+                  <div className="absolute inset-0 bg-blue-100/50 rounded-full scale-0 group-hover:scale-110 transition-transform duration-500"></div>
+                  <Upload 
+                    className={`relative mx-auto transition-all duration-300 ${uploading ? 'animate-bounce text-slate-300' : 'text-slate-300 group-hover:text-blue-500 group-hover:-translate-y-1'}`} 
+                    size={40} 
+                  />
+                </div>
+                <span className="block font-black text-slate-400 group-hover:text-blue-600 text-[10px] uppercase tracking-widest mb-1">
+                  {uploading ? 'PROCESANDO...' : 'Importar Archivo'}
+                </span>
+                <p className="text-[10px] font-bold text-slate-300 px-4 leading-relaxed">Arrastra tu archivo Excel (.xlsx) aquí para iniciar el reporte</p>
+              </div>
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] rounded-[2rem]">
+                  <Loader2 className="animate-spin text-blue-600" size={32} />
+                </div>
+              )}
             </label>
-            {uploading && <p className="mt-4 text-xs font-black text-blue-600 animate-pulse text-center">CARGANDO...</p>}
-          </div>
+            
+            <div className="mt-8 pt-8 border-t border-slate-50 space-y-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Requisitos:</p>
+              <div className="flex items-center gap-2 text-slate-400">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <span className="text-[10px] font-bold">Encabezados correctos</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <span className="text-[10px] font-bold">Formato .xlsx</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
       )}
-      <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'col-span-3' : 'col-span-4'}>
-        <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-          <h3 className="font-black text-2xl text-slate-900 mb-8 tracking-tighter">Historial de Reportes</h3>
-          <div className="space-y-4">
-            {reports.map(r => (
-              <div key={r.id} onClick={() => onSelectReport(r)} className="group flex items-center justify-between p-6 rounded-3xl bg-slate-50 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 transition-all cursor-pointer border border-transparent hover:border-blue-100">
-                <div className="flex items-center gap-6">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${['CLOSED', 'CERRADO'].includes(r.status) ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {['CLOSED', 'CERRADO'].includes(r.status) ? <CheckCircle size={28} /> : <FileSpreadsheet size={28} />}
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-900 text-lg">Día {formatDisplayDate(r.date)}</p>
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">ESTADO: <span className={['OPEN', 'ABIERTO'].includes(r.status) ? 'text-blue-600' : 'text-green-600'}>{r.status === 'OPEN' ? 'ABIERTO' : r.status === 'CLOSED' ? 'CERRADO' : r.status}</span></p>
-                  </div>
-                </div>
-                <ChevronRight size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+
+      {/* PANEL DERECHO: HISTORIAL */}
+      <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-3' : 'lg:col-span-4'}>
+        <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
+            <div className="flex-1">
+              <h3 className="font-black text-2xl sm:text-3xl text-slate-900 tracking-tighter">Historial de Reportes</h3>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Empresa {userData?.companyId || '---'}</p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
+              {/* Buscador */}
+              <div className="relative">
+                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                <input 
+                  type="text"
+                  placeholder="Buscar reporte..."
+                  value={dashSearch}
+                  onChange={e => setDashSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none transition-all placeholder:text-slate-300"
+                />
               </div>
-            ))}
+
+              {/* Filtro Mes */}
+              <CustomDropdown 
+                value={dashMonth}
+                options={MONTHS}
+                onChange={setDashMonth}
+                placeholder="Mes"
+                isCompact={true}
+                className="min-w-[120px]"
+              />
+
+              {/* Filtro Año */}
+              <CustomDropdown 
+                value={dashYear}
+                options={availableYears}
+                onChange={setDashYear}
+                placeholder="Año"
+                isCompact={true}
+                className="min-w-[100px]"
+              />
+            </div>
+
+            <div className="hidden xl:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+              <FileSpreadsheet size={16} className="text-blue-500" />
+              <span className="text-[11px] font-black text-slate-600">{filteredReports.length}</span>
+            </div>
           </div>
+
+          <motion.div 
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+            }}
+            className="space-y-4"
+          >
+            {filteredReports.map((r, i) => {
+              const total = r.totalWorkers || 0;
+              const reviewed = r.reviewedWorkers || 0;
+              const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
+              const isClosed = ['CLOSED', 'CERRADO'].includes(r.status);
+
+              return (
+                <motion.div 
+                  key={r.id}
+                  variants={{
+                    hidden: { opacity: 0, x: -20 },
+                    show: { opacity: 1, x: 0 }
+                  }}
+                  whileHover={{ x: 8 }}
+                  onClick={() => onSelectReport(r)}
+                  className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 rounded-3xl bg-slate-50 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all cursor-pointer border border-transparent hover:border-blue-100"
+                >
+                  {/* Icon & Primary Info */}
+                  <div className="flex items-center gap-6 mb-4 sm:mb-0">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500 ${isClosed ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600 group-hover:scale-110 group-hover:rotate-3'}`}>
+                      {isClosed ? <CheckCircle size={28} /> : <FileSpreadsheet size={28} />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <p className="font-black text-slate-900 text-xl tracking-tight leading-none">Día {formatDisplayDate(r.date)}</p>
+                        <div className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600 animate-pulse'}`}>
+                          {isClosed ? 'Cerrado' : 'Abierto'}
+                        </div>
+                      </div>
+                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-2 flex items-center gap-1.5">
+                        <Users size={10} className="text-slate-300" />
+                        {total} TRABAJADORES
+                        <span className="text-slate-200">|</span>
+                        <Clock size={10} className="text-slate-300" />
+                        SUBIDO: {new Date(r.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress & Actions */}
+                  <div className="flex items-center gap-8 w-full sm:w-auto mt-2 sm:mt-0">
+                    <div className="hidden md:flex flex-col items-end gap-2 w-40">
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progreso</span>
+                        <span className="text-[9px] font-black text-slate-600">{percent}%</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percent}%` }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                          className={`h-full rounded-full ${isClosed ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100/50 text-slate-300 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-200 transition-all duration-300">
+                      <ChevronRight size={20} />
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+          
+          {reports.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
+                <FileSpreadsheet size={32} className="text-slate-200" />
+              </div>
+              <h4 className="text-slate-400 font-black text-sm uppercase tracking-widest">No hay reportes disponibles</h4>
+              <p className="text-slate-300 text-xs mt-2 font-medium">Sube tu primer archivo Excel para comenzar</p>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1027,35 +1284,44 @@ function AnalyticsDashboard({ userData, onBack }) {
           </div>
         </motion.div>
 
-        {/* Observation Pie */}
+        {/* Observation Analysis */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20"
+          className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-col"
         >
           <div className="flex items-center gap-4 mb-8">
             <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-              <PieIcon size={20} />
+              <BarChart3 size={20} />
             </div>
-            <h3 className="font-black text-xl text-slate-900 tracking-tighter">Observaciones Frecuentes</h3>
+            <h3 className="font-black text-xl text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={stats.obsData}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {stats.obsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          
+          <div className="flex-1 space-y-4">
+            {stats.obsData.length > 0 ? stats.obsData.map((obs, idx) => {
+              const totalCompleted = stats.trendData.reduce((acc, curr) => acc + curr.completed, 0);
+              const perc = totalCompleted > 0 ? Math.round((obs.value / totalCompleted) * 100) : 0;
+              return (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="text-slate-600 truncate max-w-[150px]">{obs.name}</span>
+                    <span className="text-indigo-600 font-bold">{obs.value.toLocaleString()} <span className="text-slate-300 ml-1 text-[8px]">({perc}%)</span></span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${perc}%` }}
+                      transition={{ duration: 1, delay: 0.2 + (idx * 0.1) }}
+                      className="h-full bg-indigo-500 rounded-full"
+                    ></motion.div>
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-300">
+                <PieChart size={32} className="opacity-20 mb-2" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Sin datos</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>
@@ -1100,6 +1366,17 @@ function ReportTableView({ report, onBack, userData }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [currentReport, setCurrentReport] = useState(report);
+
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'reports', report.id), (snap) => {
+      if (snap.exists()) {
+        setCurrentReport({ id: snap.id, ...snap.data() });
+      }
+    });
+    return unsub;
+  }, [report.id]);
 
 
   useEffect(() => {
@@ -1110,16 +1387,17 @@ function ReportTableView({ report, onBack, userData }) {
     });
     return unsub;
   }, [report.id]);
+  
 
   const tableColumns = useMemo(() => {
     const allCols = [];
 
     // 1. Prioridad: Orden original guardado (Nuevos reportes)
-    if (report.columnOrder && report.columnOrder.length > 0) {
-      allCols.push(...report.columnOrder);
+    if (currentReport.columnOrder && currentReport.columnOrder.length > 0) {
+      allCols.push(...currentReport.columnOrder);
     } else {
       // 2. Fallback: Orden guardado de extras (Reportes intermedios)
-      const extra = report.extraColumnsOrder || [];
+      const extra = currentReport.extraColumnsOrder || [];
       if (extra.length > 0) {
         allCols.push('NOMBRE', 'DNI', 'CODIGO', ...extra, 'OBSERVACION');
       } else {
@@ -1178,6 +1456,38 @@ function ReportTableView({ report, onBack, userData }) {
     return { total, completed, isAllDone: total > 0 && completed === total };
   }, [people]);
 
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!currentReport.id) return;
+      
+      const responseBreakdown = {};
+      people.forEach(p => {
+        if (p.respuestaObservacion) {
+          responseBreakdown[p.respuestaObservacion] = (responseBreakdown[p.respuestaObservacion] || 0) + 1;
+        }
+      });
+
+      const needsUpdate = 
+        currentReport.reviewedWorkers !== progress.completed || 
+        currentReport.totalWorkers !== progress.total ||
+        JSON.stringify(currentReport.responseBreakdown || {}) !== JSON.stringify(responseBreakdown);
+
+      if (needsUpdate) {
+        try {
+          await updateDoc(doc(db, 'reports', currentReport.id), {
+            reviewedWorkers: progress.completed,
+            totalWorkers: progress.total,
+            responseBreakdown
+          });
+        } catch (e) {
+          console.error("Error syncing report metadata:", e);
+        }
+      }
+    }, 1000); // 1 segundo de debounce
+    
+    return () => clearTimeout(timer);
+  }, [currentReport.id, progress.completed, progress.total]);
+
   const filtered = useMemo(() => {
     return people.filter(p => {
       const matchSearch = p.nombreCompleto.toLowerCase().includes(search.toLowerCase()) ||
@@ -1232,13 +1542,13 @@ function ReportTableView({ report, onBack, userData }) {
   };
 
   const COL_WIDTHS = {
-    'CHECK': 34,
-    '#': 38,
-    'NOMBRE': 220,
-    'DNI': 85,
-    'CODIGO': 75,
-    'NOMBRE COMPLETO': 220,
-    'DEFAULT': 110
+    'CHECK': 30,
+    '#': 34,
+    'NOMBRE': 190,
+    'DNI': 75,
+    'CODIGO': 65,
+    'NOMBRE COMPLETO': 190,
+    'DEFAULT': 95
   };
 
   const getColWidth = (col) => {
@@ -1320,9 +1630,9 @@ function ReportTableView({ report, onBack, userData }) {
   const [activeDropdown, setActiveDropdown] = useState(null);
 
   const updateRespuesta = async (pId, val) => {
-    if (['CLOSED', 'CERRADO'].includes(report.status)) return;
+    if (['CLOSED', 'CERRADO'].includes(currentReport.status)) return;
     try {
-      await updateDoc(doc(db, `reports/${report.id}/people`, pId), { respuestaObservacion: val });
+      await updateDoc(doc(db, `reports/${currentReport.id}/people`, pId), { respuestaObservacion: val });
     } catch (e) {
       console.error("Error updating response:", e);
     }
@@ -1363,25 +1673,12 @@ function ReportTableView({ report, onBack, userData }) {
     }
   };
 
-  const handleClose = async () => {
-    if (!confirm("¿Deseas cerrar permanentemente este reporte?")) return;
-    try {
-      setSaving(true);
-      await updateDoc(doc(db, 'reports', report.id), { status: 'CLOSED' });
-      alert("Reporte Cerrado.");
-      onBack();
-    } catch (e) {
-      alert("Error al cerrar: " + e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDownloadExcel = async () => {
     try {
       // 1. Definir columnas base (usando el orden original si existe)
-      const baseColumns = (report.columnOrder && report.columnOrder.length > 0) 
-        ? report.columnOrder 
+      const baseColumns = (currentReport.columnOrder && currentReport.columnOrder.length > 0) 
+        ? currentReport.columnOrder 
         : tableColumns;
       
       const exportHeaders = [...baseColumns, 'RESPUESTA OBSERVACIÓN'];
@@ -1459,13 +1756,18 @@ function ReportTableView({ report, onBack, userData }) {
     const idsToUpdate = selectedIds.size > 0 ? Array.from(selectedIds) : filtered.map(p => p.id);
     if (idsToUpdate.length === 0 || !val) return;
     
+    if (['CLOSED', 'CERRADO'].includes(currentReport.status)) {
+      alert("No se pueden realizar cambios masivos en un reporte cerrado.");
+      return;
+    }
+
     if (!confirm(`¿Estás seguro de asignar "${val}" a los ${idsToUpdate.length} trabajadores seleccionados?`)) return;
 
     try {
       setSaving(true);
       const batch = writeBatch(db);
       idsToUpdate.forEach(id => {
-        batch.update(doc(db, `reports/${report.id}/people`, id), { respuestaObservacion: val });
+        batch.update(doc(db, `reports/${currentReport.id}/people`, id), { respuestaObservacion: val });
       });
       await batch.commit();
       setIsBulkModalOpen(false);
@@ -1478,29 +1780,98 @@ function ReportTableView({ report, onBack, userData }) {
     }
   };
 
+  const handleClose = async () => {
+    if (!progress.isAllDone) return;
+    if (!confirm("¿Deseas FINALIZAR este reporte? Ya no se podrán realizar más cambios.")) return;
+    try {
+      setSaving(true);
+      await updateDoc(doc(db, 'reports', currentReport.id), { status: 'CLOSED' });
+      alert("Reporte Cerrado Correctamente.");
+    } catch (e) {
+      alert("Error: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!confirm("¿Deseas REABRIR este reporte para permitir nuevas ediciones?")) return;
+    try {
+      setSaving(true);
+      await updateDoc(doc(db, 'reports', currentReport.id), { status: 'OPEN' });
+      alert("Reporte Reabierto.");
+    } catch (e) {
+      alert("Error al reabrir: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-6 pb-20">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-        <div>
-          <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-bold hover:text-blue-600 mb-1 transition-all text-xs">
-            <ChevronLeft size={16} /> Volver
-          </button>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Reporte del {formatDisplayDate(report?.date)}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-slate-400 text-[9px] font-semibold uppercase tracking-widest">EMPRESA: {getCompanyName(report?.companyId)} • ESTADO: {report?.status === 'OPEN' ? 'ABIERTO' : report?.status === 'CLOSED' ? 'CERRADO' : report?.status || '---'}</p>
-            <div className="h-1 w-1 rounded-full bg-slate-200"></div>
-            <p className="text-blue-500 text-[9px] font-black uppercase tracking-widest">ROL: {userData?.role || '---'}</p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3 pb-10">
+      <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col gap-4">
+        {/* FILA 1: INFORMACIÓN Y ACCIONES PRINCIPALES */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-bold hover:text-blue-600 transition-all text-[9px] uppercase tracking-widest group">
+              <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Volver al listado
+            </button>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tighter leading-none">Reporte {formatDisplayDate(currentReport?.date)}</h2>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                <div className={`w-1 h-1 rounded-full ${['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'bg-blue-600 animate-pulse' : 'bg-green-600'}`}></div>
+                {['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'En Proceso' : 'Cerrado'}
+              </div>
+              <span className="text-slate-200 text-[10px]">•</span>
+              <div className="flex items-center gap-2 text-slate-400">
+                <Users size={12} />
+                <p className="text-[9px] font-black uppercase tracking-widest">{currentReport.totalWorkers || 0} Registros</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+             {/* Borrado de Reporte (Solo Encargados) */}
+             {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
+              <button
+                onClick={handleDelete}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-red-50 hover:border-red-500"
+              >
+                {saving ? <Loader2 className="animate-spin" size={12} /> : <Trash2 size={12} />}
+                Eliminar
+              </button>
+            )}
+
+            {['CLOSED', 'CERRADO'].includes(currentReport.status) && (
+              <button
+                onClick={handleReopen}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-amber-100"
+              >
+                <RotateCcw size={12} /> Reabrir
+              </button>
+            )}
+
+            <button
+              onClick={handleDownloadExcel}
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white hover:bg-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 active:scale-95"
+            >
+              <FileSpreadsheet size={14} /> Exportar Excel
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 w-full lg:w-auto">
-          {/* Grupo de Filtros */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-64">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+        <div className="h-px bg-slate-100 w-full rounded-full opacity-50"></div>
+
+        {/* FILA 2: CONTROLES DE FILTRO Y ACCIONES MASIVAS */}
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
               <input
-                type="text" placeholder="Buscar..."
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 rounded-xl border-none outline-none focus:ring-4 focus:ring-blue-100 font-bold text-slate-700 text-[10px]"
+                type="text" placeholder="BUSCAR TRABAJADOR..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-100/30 font-black uppercase tracking-widest text-slate-700 text-[10px] placeholder:text-slate-300 transition-all"
                 value={search} onChange={e => setSearch(e.target.value)}
               />
             </div>
@@ -1511,7 +1882,7 @@ function ReportTableView({ report, onBack, userData }) {
                 options={['Todas', ...uniqueZonas]}
                 onChange={setFilterZona}
                 placeholder="Zona"
-                className="w-40"
+                className="w-full sm:w-44"
               />
             )}
 
@@ -1521,72 +1892,53 @@ function ReportTableView({ report, onBack, userData }) {
                 options={['Todas', ...uniqueRutas]}
                 onChange={setFilterRuta}
                 placeholder="Ruta"
-                className="w-40"
+                className="w-full sm:w-44"
               />
             )}
 
             <CustomDropdown
               value={filterDigitacion}
-              options={[
-                { label: 'Digitación: Todas', value: 'Todas' },
-                { label: 'Digitación: SI', value: 'SI' },
-                { label: 'Digitación: NO', value: 'NO' }
-              ]}
+              options={['Todas', 'SI', 'NO']}
               onChange={setFilterDigitacion}
-              placeholder="Digitación"
-              className="w-40"
+              placeholder="Dig"
+              className="w-full sm:w-28"
             />
 
             <CustomDropdown
               value={filterObs}
               options={['Todas', ...uniqueObservations]}
               onChange={setFilterObs}
-              placeholder="Todas Obs."
-              className="w-40"
+              placeholder="Obs."
+              className="w-full sm:w-48"
             />
           </div>
 
-          {/* Grupo de Acciones */}
-          <div className="flex items-center gap-3">
-            {['OPEN', 'ABIERTO'].includes(report.status) && (['CONTROL', 'ENCARGADO'].includes(String(userData?.role || '').toUpperCase())) && (
-              <button
-                onClick={handleClose}
-                disabled={saving || !progress.isAllDone}
-                className={`px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm flex-1 sm:flex-none ${progress.isAllDone ? 'bg-slate-900 text-white border-slate-900 hover:bg-blue-600 hover:border-blue-600 hover:shadow-blue-200' : 'bg-white text-slate-300 border-slate-100 cursor-not-allowed'}`}
-              >
-                {saving ? <Loader2 className="animate-spin" size={16} /> : (progress.isAllDone ? <Lock size={16} /> : <Clock size={16} />)}
-                {progress.isAllDone ? 'Finalizar Reporte' : `Pendientes: ${progress.total - progress.completed}`}
-              </button>
-            )}
+          <div className="flex flex-wrap items-center gap-2 border-l-0 xl:border-l xl:pl-4 border-slate-100">
+            {/* Acciones de Edición (Solo si está abierto) */}
+            {['OPEN', 'ABIERTO'].includes(currentReport.status) && (
+              <>
+                {(filtered.length > 0) && (
+                  <button
+                    onClick={() => setIsBulkModalOpen(true)}
+                    disabled={saving}
+                    className={`px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${selectedIds.size > 0 ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' : 'bg-white text-indigo-600 border-indigo-100 hover:bg-slate-50'}`}
+                  >
+                    <MousePointerClick size={14} />
+                    {selectedIds.size > 0 ? `Asignar (${selectedIds.size})` : `Asignar Todos (${filtered.length})`}
+                  </button>
+                )}
 
-            {(filtered.length > 0) && (
-              <button
-                onClick={() => setIsBulkModalOpen(true)}
-                disabled={saving}
-                className={`px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm flex-1 sm:flex-none ${selectedIds.size > 0 ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-200' : 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-slate-100'}`}
-              >
-                <MousePointerClick size={16} />
-                {selectedIds.size > 0 ? `Asignar a ${selectedIds.size} seleccionados` : `Asignar a ${filtered.length} filtrados`}
-              </button>
-            )}
-
-            <button
-              onClick={handleDownloadExcel}
-              className="bg-white text-slate-700 px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 hover:text-blue-600 hover:border-blue-100 transition-all flex items-center justify-center gap-2 border border-slate-200 shadow-sm flex-1 sm:flex-none"
-            >
-              <FileSpreadsheet size={16} className="text-blue-600" />
-              Exportar a Excel
-            </button>
-
-            {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
-              <button
-                onClick={handleDelete}
-                disabled={saving}
-                className="bg-white text-red-500 px-8 py-3.5 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center gap-2 border border-red-100 shadow-sm flex-1 sm:flex-none"
-              >
-                {saving ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
-                Eliminar
-              </button>
+                {['CONTROL', 'ENCARGADO'].includes(String(userData?.role || '').toUpperCase()) && (
+                  <button
+                    onClick={handleClose}
+                    disabled={saving || !progress.isAllDone}
+                    className={`px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${progress.isAllDone ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-blue-600 hover:shadow-blue-200' : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'}`}
+                  >
+                    {progress.isAllDone ? <CheckCircle size={14} /> : <Loader2 className="animate-spin" size={14} />}
+                    Finalizar
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1631,15 +1983,15 @@ function ReportTableView({ report, onBack, userData }) {
                 const isEdited = !!p.edited;
                 return (
                   <tr key={p.id} className={`hover:bg-blue-50 transition-colors group ${selectedIds.has(p.id) ? 'bg-indigo-50/50' : (isEdited ? 'bg-amber-50/40' : '')}`}>
-                    <td className={`px-2 py-1 sticky left-0 z-20 border-b border-r border-slate-100 text-center transition-colors ${selectedIds.has(p.id) ? 'bg-indigo-50 group-hover:bg-blue-50' : (isEdited ? 'bg-amber-50 group-hover:bg-blue-50' : 'bg-slate-50 group-hover:bg-blue-50')}`} style={{ width: `${COL_WIDTHS['CHECK']}px`, left: 0 }}>
+                    <td className={`px-2 py-0 sticky left-0 z-20 border-b border-r border-slate-100 text-center transition-colors ${selectedIds.has(p.id) ? 'bg-indigo-50 group-hover:bg-blue-50' : (isEdited ? 'bg-amber-50 group-hover:bg-blue-50' : 'bg-slate-50 group-hover:bg-blue-50')}`} style={{ width: `${COL_WIDTHS['CHECK']}px`, left: 0 }}>
                       <input 
                         type="checkbox" 
-                        className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelectOne(p.id)}
                       />
                     </td>
-                    <td className={`px-2 py-1 text-[10px] font-bold text-slate-400 sticky z-20 border-b border-r border-slate-100 text-center transition-colors ${selectedIds.has(p.id) ? 'bg-indigo-50 group-hover:bg-blue-50' : (isEdited ? 'bg-amber-50 group-hover:bg-blue-50' : 'bg-slate-50 group-hover:bg-blue-50')}`} style={{ width: `${COL_WIDTHS['#']}px`, left: `${COL_WIDTHS['CHECK']}px` }}>{idx + 1}</td>
+                    <td className={`px-2 py-0 text-[9px] font-bold text-slate-400 sticky z-20 border-b border-r border-slate-100 text-center transition-colors ${selectedIds.has(p.id) ? 'bg-indigo-50 group-hover:bg-blue-50' : (isEdited ? 'bg-amber-50 group-hover:bg-blue-50' : 'bg-slate-50 group-hover:bg-blue-50')}`} style={{ width: `${COL_WIDTHS['#']}px`, left: `${COL_WIDTHS['CHECK']}px` }}>{idx + 1}</td>
                     {tableColumns.map(col => {
                       const isSticky = stickyConfig.stickySet.has(col);
                       const isLast = col === stickyConfig.lastCol;
@@ -1655,7 +2007,7 @@ function ReportTableView({ report, onBack, userData }) {
                           <td
                             key={col}
                             onDoubleClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
-                            className={`px-2 py-1 text-[10px] font-medium border-b cursor-pointer ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' : ''} ${isModified ? 'bg-amber-100/30 text-amber-900 border-amber-200' : (isSticky ? (isEdited ? 'bg-amber-50/10' : 'bg-white') : 'text-slate-700')} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
+                            className={`px-2 py-0 text-[9px] font-medium border-b cursor-pointer leading-tight ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' : ''} ${isModified ? 'bg-amber-100/30 text-amber-900 border-amber-200' : (isSticky ? (isEdited ? 'bg-amber-50/10' : 'bg-white') : 'text-slate-700')} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
                           style={{
                             left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
                             width: `${w}px`,
@@ -1670,28 +2022,28 @@ function ReportTableView({ report, onBack, userData }) {
                       );
                     })}
                     <td 
-                      className={`px-2 py-1 bg-white group-hover:bg-blue-50 sticky right-0 border-b border-l border-blue-100 transition-all ${activeDropdown === p.id ? 'z-[100]' : 'z-30'}`} 
-                      style={{ width: '180px' }}
+                      className={`px-2 py-0 bg-white group-hover:bg-blue-50 sticky right-0 border-b border-l border-blue-100 transition-all ${activeDropdown === p.id ? 'z-[100]' : 'z-30'}`} 
+                      style={{ width: '150px' }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <div className="flex-1 min-w-0">
                           <CustomDropdown
                             value={p.respuestaObservacion || ''}
                             options={['', ...OBSERVACIONES]}
                             onChange={(val) => updateRespuesta(p.id, val)}
                             onOpenChange={(open) => setActiveDropdown(open ? p.id : null)}
-                            placeholder="--- Seleccione ---"
+                            placeholder="---"
                             className="w-full"
                             isCompact={true}
-                            disabled={['CLOSED', 'CERRADO'].includes(report.status)}
+                            disabled={['CLOSED', 'CERRADO'].includes(currentReport.status)}
                           />
                         </div>
                         <button 
                           onClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
-                          className="flex-shrink-0 p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                          title="Editar todos los datos"
+                          className="flex-shrink-0 p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                          title="Editar"
                         >
-                          <User size={14} />
+                          <User size={12} />
                         </button>
                       </div>
                     </td>
@@ -1714,12 +2066,12 @@ function ReportTableView({ report, onBack, userData }) {
         {isEditModalOpen && editingPerson && (
           <WorkerEditModal
             person={editingPerson}
-            reportId={report.id}
+            reportId={currentReport.id}
+            reportStatus={currentReport.status}
             tableColumns={tableColumns}
             onClose={() => { setIsEditModalOpen(false); setEditingPerson(null); }}
             onSave={(updatedPerson) => {
               setPeople(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
-              setFiltered(prev => prev.map(p => p.id === updatedPerson.id ? updatedPerson : p));
             }}
           />
         )}
