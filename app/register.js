@@ -15,7 +15,7 @@ export default function RegisterScreen() {
   const [role, setRole] = useState('CONTROL'); // Default to CONTROL
   const [company, setCompany] = useState('14'); // Default to Verfrut
   const [loading, setLoading] = useState(false);
-  
+
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -33,15 +33,15 @@ export default function RegisterScreen() {
     // Using a secondary app instance to create user without kicking admin out (same pattern as web)
     try {
       setLoading(true);
-      
+
       let secondaryApp = getApps().find(a => a.name === "SecondaryAppRegister");
       if (!secondaryApp) {
         secondaryApp = initializeApp(firebaseConfig, "SecondaryAppRegister");
       }
       const secondaryAuth = getAuth(secondaryApp);
-      
+
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email.trim(), password);
-      
+
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         uid: userCredential.user.uid,
         email: email.trim().toLowerCase(),
@@ -74,18 +74,18 @@ export default function RegisterScreen() {
     <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
       <SafeAreaView className="flex-1">
-        <ScrollView 
-          className="flex-1" 
-          contentContainerStyle={{ 
-            padding: 24, 
-            paddingTop: Platform.OS === 'android' ? insets.top + 20 : 20, 
-            paddingBottom: 60 
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            padding: 24,
+            paddingTop: Platform.OS === 'android' ? insets.top + 20 : 20,
+            paddingBottom: 60
           }}
           showsVerticalScrollIndicator={false}
         >
           {/* Back Button - Moved down for better accessibility */}
-          <TouchableOpacity 
-            onPress={() => router.back()} 
+          <TouchableOpacity
+            onPress={() => router.back()}
             className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100 mb-8"
           >
             <Text className="text-xl text-slate-900">←</Text>
@@ -139,7 +139,7 @@ export default function RegisterScreen() {
               <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Rol del Usuario</Text>
               <View className="flex-row gap-3">
                 {['CONTROL', 'ENCARGADO'].map((r) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     key={r}
                     onPress={() => setRole(r)}
                     activeOpacity={0.8}
@@ -153,7 +153,7 @@ export default function RegisterScreen() {
                 ))}
               </View>
             </View>
-            
+
             {/* Company Selector */}
             <View>
               <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Sede / Empresa</Text>
@@ -163,7 +163,7 @@ export default function RegisterScreen() {
                   { id: '14', name: 'Verfrut' },
                   { id: '23', name: 'Avanti' }
                 ].map((c) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     key={c.id}
                     onPress={() => setCompany(c.id)}
                     activeOpacity={0.8}
@@ -178,7 +178,7 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleRegister}
               disabled={loading}
               activeOpacity={0.8}

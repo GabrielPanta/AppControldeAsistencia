@@ -18,7 +18,7 @@ const RESPUESTAS_OPTIONS = [
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '---';
   const s = String(dateStr).trim();
-  
+
   // 1. Caso DD/MM/YYYY o D/M/YYYY
   const slashParts = s.split('/');
   if (slashParts.length === 3) {
@@ -61,7 +61,7 @@ const STYLES_COMPLETION = {
 const FilterChip = ({ icon, label, value, onPress }) => {
   const isActive = value !== 'Todas';
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
       className={`flex-row items-center px-6 py-3.5 rounded-2xl border ${isActive ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-200' : 'bg-white border-slate-100 shadow-sm shadow-slate-50'}`}
@@ -145,11 +145,11 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
         <TouchableOpacity activeOpacity={1} onPress={onClose} className="flex-1" />
         <View className="bg-white rounded-t-[3rem] p-8 max-h-[92%] shadow-2xl">
           <View className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
-          
+
           <View className="flex-row justify-between items-start mb-6">
             <View className="flex-1 pr-6">
               <Text className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Ficha del Trabajador</Text>
-              
+
               {isEditing ? (
                 <View className="mb-4">
                   <Text className="text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Nombre Completo</Text>
@@ -175,8 +175,8 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
               </View>
             </View>
             <View className="flex-row gap-2">
-              <TouchableOpacity 
-                onPress={() => setIsEditing(!isEditing)} 
+              <TouchableOpacity
+                onPress={() => setIsEditing(!isEditing)}
                 className={`w-12 h-12 rounded-[1.5rem] items-center justify-center border ${isEditing ? 'bg-amber-100 border-amber-200' : 'bg-slate-50 border-slate-100'}`}
               >
                 <Text className="text-xl">{isEditing ? '🚫' : '✏️'}</Text>
@@ -188,98 +188,98 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} className="mb-6">
-             {/* Observation from EXCEL as Reference */}
-             {!isEditing && (
-               <View className="bg-amber-50/50 p-6 rounded-[2.5rem] border border-amber-100/50 mb-10">
-                  <View className="flex-row items-center gap-2.5 mb-2.5">
-                     <Text className="text-sm">📋</Text>
-                     <Text className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Observación Original (Excel)</Text>
-                  </View>
-                  <Text className="text-[15px] text-amber-800 font-bold leading-relaxed">{person.observacion || 'Sin observación'}</Text>
-               </View>
-             )}
-
-             <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">Seleccionar Respuesta</Text>
-             
-             {/* Combobox Style Selection Premium */}
-             <TouchableOpacity 
-                onPress={() => !isEditing && setShowPicker(true)}
-                activeOpacity={isEditing ? 1 : 0.7}
-                className={`flex-row justify-between items-center p-7 rounded-full mb-10 border-2 ${person.respuestaObservacion ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-100'} ${isEditing ? 'opacity-50' : ''}`}
-             >
-                <View className="flex-1">
-                   {person.respuestaObservacion ? (
-                      <Text className="text-[18px] font-black text-blue-600 tracking-tight">{person.respuestaObservacion}</Text>
-                   ) : (
-                      <Text className="text-[18px] font-bold text-slate-300">Seleccionar...</Text>
-                   )}
+            {/* Observation from EXCEL as Reference */}
+            {!isEditing && (
+              <View className="bg-amber-50/50 p-6 rounded-[2.5rem] border border-amber-100/50 mb-10">
+                <View className="flex-row items-center gap-2.5 mb-2.5">
+                  <Text className="text-sm">📋</Text>
+                  <Text className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Observación Original (Excel)</Text>
                 </View>
-                {!isEditing && (
-                  <View className="bg-white w-10 h-10 rounded-full items-center justify-center shadow-sm">
-                     <Text className="text-blue-600 text-lg font-black">▼</Text>
-                  </View>
-                )}
-             </TouchableOpacity>
+                <Text className="text-[15px] text-amber-800 font-bold leading-relaxed">{person.observacion || 'Sin observación'}</Text>
+              </View>
+            )}
 
-             <View className="bg-slate-50/30 rounded-[2.5rem] p-7 border border-slate-100">
-                {columnOrder ? (
-                  columnOrder.filter(key => {
-                    const k = key.toUpperCase().trim();
-                    return !k.includes('NOMBRE') && !k.includes('TRABAJADOR') && !k.includes('PERSONAL') && !k.includes('DNI') && !k.includes('IDENTIFICACION');
-                  }).map((key, idx, arr) => {
-                    const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
-                    const value = person.datosExtra?.[key];
-                    const isPersistedModified = !!person.modifiedFields?.[key];
+            <Text className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">Seleccionar Respuesta</Text>
 
-                    return (
-                      <View key={`${key}-${idx}`} className={`pb-5 mb-5 ${idx !== arr.length - 1 ? 'border-b border-slate-200/30' : ''}`}>
-                         <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
-                         <View className={`p-4 rounded-2xl border ${isPersistedModified ? 'bg-amber-100/50 border-amber-200' : 'bg-white/50 border-slate-100/50'}`}>
-                           {isEditing && isEditable ? (
-                             <TextInput
-                               className="text-[15px] font-bold text-slate-800 tracking-tight"
-                               value={String(editedData.datosExtra?.[key] || '')}
-                               onChangeText={(val) => setEditedData(prev => ({
-                                 ...prev,
-                                 datosExtra: { ...prev.datosExtra, [key]: val }
-                               }))}
-                             />
-                           ) : (
-                             <Text className={`text-[15px] font-bold tracking-tight ${isPersistedModified ? 'text-amber-900' : 'text-slate-800'}`}>{String(value || '---').trim()}</Text>
-                           )}
-                         </View>
-                      </View>
-                    );
-                  })
+            {/* Combobox Style Selection Premium */}
+            <TouchableOpacity
+              onPress={() => !isEditing && setShowPicker(true)}
+              activeOpacity={isEditing ? 1 : 0.7}
+              className={`flex-row justify-between items-center p-7 rounded-full mb-10 border-2 ${person.respuestaObservacion ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-100'} ${isEditing ? 'opacity-50' : ''}`}
+            >
+              <View className="flex-1">
+                {person.respuestaObservacion ? (
+                  <Text className="text-[18px] font-black text-blue-600 tracking-tight">{person.respuestaObservacion}</Text>
                 ) : (
-                  person.datosExtra && Object.entries(person.datosExtra).map(([key, value], idx) => {
-                    const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
-                    return (
-                      <View key={`${key}-${idx}`} className={`pb-5 mb-5 ${idx !== Object.keys(person.datosExtra).length - 1 ? 'border-b border-slate-200/30' : ''}`}>
-                         <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
-                         <View className="bg-white/50 p-4 rounded-2xl border border-slate-100/50">
-                           {isEditing && isEditable ? (
-                             <TextInput
-                               className="text-[15px] font-bold text-slate-800 tracking-tight"
-                               value={String(editedData.datosExtra?.[key] || '')}
-                               onChangeText={(val) => setEditedData(prev => ({
-                                 ...prev,
-                                 datosExtra: { ...prev.datosExtra, [key]: val }
-                               }))}
-                             />
-                           ) : (
-                             <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
-                           )}
-                         </View>
-                      </View>
-                    );
-                  })
+                  <Text className="text-[18px] font-bold text-slate-300">Seleccionar...</Text>
                 )}
-             </View>
+              </View>
+              {!isEditing && (
+                <View className="bg-white w-10 h-10 rounded-full items-center justify-center shadow-sm">
+                  <Text className="text-blue-600 text-lg font-black">▼</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View className="bg-slate-50/30 rounded-[2.5rem] p-7 border border-slate-100">
+              {columnOrder ? (
+                columnOrder.filter(key => {
+                  const k = key.toUpperCase().trim();
+                  return !k.includes('NOMBRE') && !k.includes('TRABAJADOR') && !k.includes('PERSONAL') && !k.includes('DNI') && !k.includes('IDENTIFICACION');
+                }).map((key, idx, arr) => {
+                  const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
+                  const value = person.datosExtra?.[key];
+                  const isPersistedModified = !!person.modifiedFields?.[key];
+
+                  return (
+                    <View key={`${key}-${idx}`} className={`pb-5 mb-5 ${idx !== arr.length - 1 ? 'border-b border-slate-200/30' : ''}`}>
+                      <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
+                      <View className={`p-4 rounded-2xl border ${isPersistedModified ? 'bg-amber-100/50 border-amber-200' : 'bg-white/50 border-slate-100/50'}`}>
+                        {isEditing && isEditable ? (
+                          <TextInput
+                            className="text-[15px] font-bold text-slate-800 tracking-tight"
+                            value={String(editedData.datosExtra?.[key] || '')}
+                            onChangeText={(val) => setEditedData(prev => ({
+                              ...prev,
+                              datosExtra: { ...prev.datosExtra, [key]: val }
+                            }))}
+                          />
+                        ) : (
+                          <Text className={`text-[15px] font-bold tracking-tight ${isPersistedModified ? 'text-amber-900' : 'text-slate-800'}`}>{String(value || '---').trim()}</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                person.datosExtra && Object.entries(person.datosExtra).map(([key, value], idx) => {
+                  const isEditable = ["ZONA", "CUARTEL", "PLACA", "RUTA", "C-BUS", "CUADRILLA"].includes(key.toUpperCase().trim());
+                  return (
+                    <View key={`${key}-${idx}`} className={`pb-5 mb-5 ${idx !== Object.keys(person.datosExtra).length - 1 ? 'border-b border-slate-200/30' : ''}`}>
+                      <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</Text>
+                      <View className="bg-white/50 p-4 rounded-2xl border border-slate-100/50">
+                        {isEditing && isEditable ? (
+                          <TextInput
+                            className="text-[15px] font-bold text-slate-800 tracking-tight"
+                            value={String(editedData.datosExtra?.[key] || '')}
+                            onChangeText={(val) => setEditedData(prev => ({
+                              ...prev,
+                              datosExtra: { ...prev.datosExtra, [key]: val }
+                            }))}
+                          />
+                        ) : (
+                          <Text className="text-[15px] font-bold text-slate-800 tracking-tight">{String(value || '---').trim()}</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
           </ScrollView>
 
           {isEditing ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleSave}
               disabled={saving}
               className="w-full bg-indigo-600 py-7 rounded-full flex-row justify-center items-center shadow-2xl shadow-indigo-300"
@@ -287,7 +287,7 @@ const WorkerDetailModal = ({ visible, person, onClose, onSelectRespuesta, onUpda
               {saving ? <ActivityIndicator color="white" /> : <Text className="text-white font-black uppercase tracking-widest text-[10px]">Guardar Cambios</Text>}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={onClose}
               className="w-full bg-slate-950 py-7 rounded-full flex-row justify-center items-center shadow-2xl shadow-slate-300"
             >
@@ -324,7 +324,7 @@ const WorkerCard = memo(({ person, index, onSelectRespuesta, onUpdateData, optio
       >
         <View className={`bg-white rounded-[2.5rem] flex-row items-center border ${isSelected ? 'border-indigo-600 bg-indigo-50/10' : (isEdited ? 'border-amber-400 bg-amber-50/30' : styles.border)} shadow-sm shadow-blue-500/5 overflow-hidden`}>
           {/* Checkbox / Selection Area */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => onToggleSelection(person.id)}
             activeOpacity={0.7}
             className={`w-14 items-center justify-center h-24 border-r ${isSelected ? 'bg-indigo-600 border-indigo-600' : (isEdited ? 'bg-amber-100 border-amber-200' : 'bg-slate-50 border-slate-100')}`}
@@ -337,10 +337,10 @@ const WorkerCard = memo(({ person, index, onSelectRespuesta, onUpdateData, optio
               )}
             </View>
           </TouchableOpacity>
-          
+
           {/* Status Indicator Bar (Reduced width or integrated) */}
           {!isSelected && !isEdited && <View className={`w-1.5 h-24 ${styles.accent}`} />}
-          
+
           <View className="flex-1 pl-5 pr-6 py-5 flex-row items-center justify-between">
             <View className="flex-1 pr-4">
               <View className="flex-row items-center mb-1.5">
@@ -359,7 +359,7 @@ const WorkerCard = memo(({ person, index, onSelectRespuesta, onUpdateData, optio
               <Text className="text-[18px] font-black text-slate-950 tracking-tighter mb-1" numberOfLines={1}>
                 {person.nombreCompleto}
               </Text>
-              
+
               {person.respuestaObservacion ? (
                 <View className="flex-row items-center">
                   <Text className="text-[11px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 overflow-hidden">
@@ -374,9 +374,9 @@ const WorkerCard = memo(({ person, index, onSelectRespuesta, onUpdateData, optio
             <View className="items-end">
               <View className={`w-12 h-12 rounded-2xl items-center justify-center ${person.respuestaObservacion ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-slate-50 border border-slate-100'}`}>
                 {person.respuestaObservacion ? (
-                   <Text className="text-white text-lg font-black">✓</Text>
+                  <Text className="text-white text-lg font-black">✓</Text>
                 ) : (
-                   <Text className="text-xl">👤</Text>
+                  <Text className="text-xl">👤</Text>
                 )}
               </View>
             </View>
@@ -515,12 +515,12 @@ export default function ReportDetailScreen() {
     try {
       const pRef = doc(db, `reports/${thisId}/people`, personId);
       const person = people.find(p => p.id === personId);
-      
+
       const modifiedFields = { ...(person.modifiedFields || {}) };
-      
+
       if (newData.nombreCompleto !== person.nombreCompleto) modifiedFields['NOMBRE'] = true;
       if (newData.dni !== person.dni) modifiedFields['DNI'] = true;
-      
+
       if (newData.datosExtra) {
         Object.keys(newData.datosExtra).forEach(k => {
           if (String(newData.datosExtra[k] || '').trim() !== String(person.datosExtra?.[k] || '').trim()) {
@@ -535,7 +535,7 @@ export default function ReportDetailScreen() {
         edited: true
       };
       await updateDoc(pRef, updatePayload);
-      
+
       setPeople(prev => prev.map(p =>
         p.id === personId ? { ...p, ...updatePayload } : p
       ));
@@ -547,7 +547,7 @@ export default function ReportDetailScreen() {
       throw error;
     }
   };
-  
+
   const toggleSelectOne = (id) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -568,7 +568,7 @@ export default function ReportDetailScreen() {
   const handleBulkUpdate = async (newValue) => {
     const idsToUpdate = selectedIds.size > 0 ? Array.from(selectedIds) : filteredPeople.map(p => p.id);
     if (idsToUpdate.length === 0) return;
-    
+
     Alert.alert(
       "Asignación Masiva",
       `¿Deseas asignar "${newValue}" a los ${idsToUpdate.length} trabajadores seleccionados?`,
@@ -581,20 +581,20 @@ export default function ReportDetailScreen() {
             try {
               setSaving(true);
               const batch = writeBatch(db);
-              
+
               idsToUpdate.forEach(id => {
                 const pRef = doc(db, `reports/${thisId}/people`, id);
                 batch.update(pRef, { respuestaObservacion: newValue });
               });
-              
+
               await batch.commit();
-              
+
               // Actualizar estado local
               const updatedPeople = people.map(p => {
                 const isToBeUpdated = idsToUpdate.includes(p.id);
                 return isToBeUpdated ? { ...p, respuestaObservacion: newValue } : p;
               });
-              
+
               setPeople(updatedPeople);
               setSelectedIds(new Set());
               Alert.alert("Éxito", `Se actualizaron ${idsToUpdate.length} trabajadores.`);
@@ -657,7 +657,7 @@ export default function ReportDetailScreen() {
 
   const handleCerrarReporte = async () => {
     const pendingCount = people.filter(p => !p.respuestaObservacion).length;
-    
+
     if (pendingCount > 0) {
       Alert.alert(
         "Reporte Incompleto",
@@ -713,111 +713,111 @@ export default function ReportDetailScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header Compacto Blue Premium */}
-      <View 
+      <View
         style={{ paddingTop: Platform.OS === 'android' ? insets.top + 40 : 0 }}
         className="bg-white border-b border-slate-100 z-10 shadow-sm"
       >
         <View className="px-6 pb-6 flex-row items-center justify-between">
-           <View className="flex-row items-center flex-1 pr-4">
-              <TouchableOpacity 
-                onPress={() => router.back()} 
-                activeOpacity={0.7}
-                className="mr-5 w-11 h-11 bg-white rounded-full items-center justify-center border border-slate-200 shadow-sm shadow-slate-100"
-              >
-                 <Text className="text-xl text-blue-600 font-bold">←</Text>
-              </TouchableOpacity>
-              <View>
-                 <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Reporte Diario</Text>
-                 <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>{formatDisplayDate(report?.date)}</Text>
-              </View>
-           </View>
-            <View className="bg-indigo-600 px-5 py-2.5 rounded-2xl shadow-lg shadow-indigo-100 border border-indigo-500">
-              <Text className="text-[12px] font-black text-white">
-                 {people.length > 0 ? Math.round((people.filter(p => !!p.respuestaObservacion).length / people.length) * 100) : 0}%
-              </Text>
+          <View className="flex-row items-center flex-1 pr-4">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+              className="mr-5 w-11 h-11 bg-white rounded-full items-center justify-center border border-slate-200 shadow-sm shadow-slate-100"
+            >
+              <Text className="text-xl text-blue-600 font-bold">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 leading-none">Reporte Diario</Text>
+              <Text className="text-xl font-black text-slate-950 tracking-tighter" numberOfLines={1}>{formatDisplayDate(report?.date)}</Text>
             </View>
+          </View>
+          <View className="bg-indigo-600 px-5 py-2.5 rounded-2xl shadow-lg shadow-indigo-100 border border-indigo-500">
+            <Text className="text-[12px] font-black text-white">
+              {people.length > 0 ? Math.round((people.filter(p => !!p.respuestaObservacion).length / people.length) * 100) : 0}%
+            </Text>
+          </View>
         </View>
 
         {/* Micro Barra de Progreso Neón */}
         <View className="h-[3px] w-full bg-slate-100">
-           <View 
-              className="h-full bg-indigo-600 shadow-md shadow-indigo-400" 
-              style={{ width: `${people.length > 0 ? (people.filter(p => !!p.respuestaObservacion).length / people.length) * 100 : 0}%` }} 
-           />
+          <View
+            className="h-full bg-indigo-600 shadow-md shadow-indigo-400"
+            style={{ width: `${people.length > 0 ? (people.filter(p => !!p.respuestaObservacion).length / people.length) * 100 : 0}%` }}
+          />
         </View>
 
         {/* Acción: Buscador y Filtros */}
         <View className="py-6 bg-slate-50/20">
-           {/* Buscador Premium */}
-           <View className="px-6 mb-5">
-              <View className="bg-white flex-row items-center px-6 py-4 rounded-3xl border border-slate-200/50 shadow-sm shadow-slate-100">
-                 <Text className="mr-3 text-lg opacity-60">🔍</Text>
-                 <TextInput 
-                   className="flex-1 text-[16px] text-slate-800 font-bold"
-                   placeholder="Buscar por nombre, DNI o código..."
-                   value={search}
-                   onChangeText={setSearch}
-                   placeholderTextColor="#94a3b8"
-                 />
-              </View>
-           </View>
+          {/* Buscador Premium */}
+          <View className="px-6 mb-5">
+            <View className="bg-white flex-row items-center px-6 py-4 rounded-3xl border border-slate-200/50 shadow-sm shadow-slate-100">
+              <Text className="mr-3 text-lg opacity-60">🔍</Text>
+              <TextInput
+                className="flex-1 text-[16px] text-slate-800 font-bold"
+                placeholder="Buscar por nombre, DNI o código..."
+                value={search}
+                onChangeText={setSearch}
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+          </View>
 
-           {/* Chips de Filtro Horizontal Premium */}
-           <ScrollView 
-             horizontal 
-             showsHorizontalScrollIndicator={false} 
-             contentContainerStyle={{ paddingHorizontal: 24, gap: 10 }}
-             className="mb-6"
-           >
-              <FilterChip 
-                 icon="🏡" label="Zona" value={selectedZona} 
-                 onPress={() => setShowZonaModal(true)} 
-              />
-              <FilterChip 
-                 icon="🚌" label="Ruta" value={selectedRuta} 
-                 onPress={() => setShowRutaModal(true)} 
-              />
-              <FilterChip 
-                 icon="⌨️" label="Digitación" value={selectedDigitacion} 
-                 onPress={() => setShowDigitacionModal(true)} 
-              />
-              <FilterChip 
-                 icon="📋" label="Observación" value={selectedObsFilter} 
-                 onPress={() => setShowObsFilterModal(true)} 
-              />
-           </ScrollView>
+          {/* Chips de Filtro Horizontal Premium */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 24, gap: 10 }}
+            className="mb-6"
+          >
+            <FilterChip
+              icon="🏡" label="Zona" value={selectedZona}
+              onPress={() => setShowZonaModal(true)}
+            />
+            <FilterChip
+              icon="🚌" label="Ruta" value={selectedRuta}
+              onPress={() => setShowRutaModal(true)}
+            />
+            <FilterChip
+              icon="⌨️" label="Digitación" value={selectedDigitacion}
+              onPress={() => setShowDigitacionModal(true)}
+            />
+            <FilterChip
+              icon="📋" label="Observación" value={selectedObsFilter}
+              onPress={() => setShowObsFilterModal(true)}
+            />
+          </ScrollView>
 
-            {/* Bulk Action Section - Displayed when there are filters active or items selected */}
-            {(search !== '' || selectedRuta !== 'Todas' || selectedZona !== 'Todas' || selectedDigitacion !== 'Todas' || selectedObsFilter !== 'Todas' || selectedIds.size > 0) && filteredPeople.length > 0 && (
-              <View className="px-6 mt-4 flex-row gap-3">
-                <TouchableOpacity 
-                   onPress={() => setShowBulkModal(true)}
-                   activeOpacity={0.8}
-                   className={`flex-1 border flex-row items-center justify-between px-6 py-4 rounded-3xl ${selectedIds.size > 0 ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-200' : 'bg-indigo-50 border-indigo-100'}`}
-                >
-                   <View className="flex-row items-center gap-3">
-                      <View className={`w-8 h-8 rounded-xl items-center justify-center ${selectedIds.size > 0 ? 'bg-white/20' : 'bg-indigo-600'}`}>
-                         <Text className="text-white text-xs">✨</Text>
-                      </View>
-                      <View>
-                        <Text className={`text-[10px] font-black uppercase tracking-widest ${selectedIds.size > 0 ? 'text-white/60' : 'text-indigo-600'}`}>Acción Masiva</Text>
-                        <Text className={`text-[13px] font-bold tracking-tight ${selectedIds.size > 0 ? 'text-white' : 'text-slate-700'}`}>
-                           {selectedIds.size > 0 ? `Asignar a ${selectedIds.size} seleccionados` : `Asignar a ${filteredPeople.length} filtrados`}
-                        </Text>
-                      </View>
-                   </View>
-                   <Text className={`text-xl ${selectedIds.size > 0 ? 'text-white' : 'text-slate-400'}`}>➔</Text>
-                </TouchableOpacity>
+          {/* Bulk Action Section - Displayed when there are filters active or items selected */}
+          {(search !== '' || selectedRuta !== 'Todas' || selectedZona !== 'Todas' || selectedDigitacion !== 'Todas' || selectedObsFilter !== 'Todas' || selectedIds.size > 0) && filteredPeople.length > 0 && (
+            <View className="px-6 mt-4 flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => setShowBulkModal(true)}
+                activeOpacity={0.8}
+                className={`flex-1 border flex-row items-center justify-between px-6 py-4 rounded-3xl ${selectedIds.size > 0 ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-200' : 'bg-indigo-50 border-indigo-100'}`}
+              >
+                <View className="flex-row items-center gap-3">
+                  <View className={`w-8 h-8 rounded-xl items-center justify-center ${selectedIds.size > 0 ? 'bg-white/20' : 'bg-indigo-600'}`}>
+                    <Text className="text-white text-xs">✨</Text>
+                  </View>
+                  <View>
+                    <Text className={`text-[10px] font-black uppercase tracking-widest ${selectedIds.size > 0 ? 'text-white/60' : 'text-indigo-600'}`}>Acción Masiva</Text>
+                    <Text className={`text-[13px] font-bold tracking-tight ${selectedIds.size > 0 ? 'text-white' : 'text-slate-700'}`}>
+                      {selectedIds.size > 0 ? `Asignar a ${selectedIds.size} seleccionados` : `Asignar a ${filteredPeople.length} filtrados`}
+                    </Text>
+                  </View>
+                </View>
+                <Text className={`text-xl ${selectedIds.size > 0 ? 'text-white' : 'text-slate-400'}`}>➔</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity 
-                   onPress={toggleSelectAll}
-                   activeOpacity={0.8}
-                   className={`w-16 items-center justify-center rounded-3xl border ${selectedIds.size >= filteredPeople.length && filteredPeople.length > 0 ? 'bg-indigo-600 border-indigo-500' : 'bg-white border-slate-200'}`}
-                >
-                   <Text className="text-xl">{selectedIds.size >= filteredPeople.length && filteredPeople.length > 0 ? '✅' : '☑️'}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              <TouchableOpacity
+                onPress={toggleSelectAll}
+                activeOpacity={0.8}
+                className={`w-16 items-center justify-center rounded-3xl border ${selectedIds.size >= filteredPeople.length && filteredPeople.length > 0 ? 'bg-indigo-600 border-indigo-500' : 'bg-white border-slate-200'}`}
+              >
+                <Text className="text-xl">{selectedIds.size >= filteredPeople.length && filteredPeople.length > 0 ? '✅' : '☑️'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Modales Compartidos */}
@@ -831,9 +831,9 @@ export default function ReportDetailScreen() {
       <FlatList
         data={filteredPeople}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ 
-          padding: 18, 
-          paddingBottom: Platform.OS === 'android' ? insets.bottom + 120 : 110 
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: Platform.OS === 'android' ? insets.bottom + 120 : 110
         }}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
@@ -879,7 +879,7 @@ export default function ReportDetailScreen() {
       />
 
       {/* Botón de Acción Flotante (Azul Vibrante) */}
-      <View 
+      <View
         style={{ paddingBottom: Platform.OS === 'android' ? insets.bottom + 10 : 40 }}
         className="absolute bottom-0 w-full px-8 pt-6 bg-white/90 border-t border-slate-100 shadow-2xl"
       >
@@ -887,27 +887,26 @@ export default function ReportDetailScreen() {
           onPress={handleCerrarReporte}
           disabled={saving}
           activeOpacity={0.8}
-          className={`w-full py-6 rounded-full flex-row justify-center items-center shadow-2xl ${
-            saving 
-              ? 'bg-slate-400' 
-              : (people.filter(p => !p.respuestaObservacion).length > 0 
-                  ? 'bg-slate-950 border-2 border-slate-800 shadow-slate-200' 
-                  : 'bg-indigo-600 shadow-indigo-400 border border-indigo-500')
-          }`}
+          className={`w-full py-6 rounded-full flex-row justify-center items-center shadow-2xl ${saving
+              ? 'bg-slate-400'
+              : (people.filter(p => !p.respuestaObservacion).length > 0
+                ? 'bg-slate-950 border-2 border-slate-800 shadow-slate-200'
+                : 'bg-indigo-600 shadow-indigo-400 border border-indigo-500')
+            }`}
         >
           {saving ? (
             <ActivityIndicator color="white" />
           ) : (
             <View className="flex-row items-center gap-3">
               <View className="w-8 h-8 rounded-full bg-white/20 items-center justify-center">
-                 <Text className="text-white text-base">
-                    {people.filter(p => !p.respuestaObservacion).length > 0 ? '⏳' : '✓'}
-                 </Text>
+                <Text className="text-white text-base">
+                  {people.filter(p => !p.respuestaObservacion).length > 0 ? '⏳' : '✓'}
+                </Text>
               </View>
               <Text className="text-white font-black text-sm text-center uppercase tracking-widest pt-0.5">
-                 {people.filter(p => !p.respuestaObservacion).length > 0 
-                   ? `Pendientes: ${people.filter(p => !p.respuestaObservacion).length}` 
-                   : 'Finalizar Reporte Ahora'}
+                {people.filter(p => !p.respuestaObservacion).length > 0
+                  ? `Pendientes: ${people.filter(p => !p.respuestaObservacion).length}`
+                  : 'Finalizar Reporte Ahora'}
               </Text>
             </View>
           )}

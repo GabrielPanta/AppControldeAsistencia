@@ -20,10 +20,10 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      
+
       // Get role from Firestore
       const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
-      
+
       if (userDoc.exists()) {
         const { role } = userDoc.data();
         if (role === 'ENCARGADO') {
@@ -48,11 +48,11 @@ export default function LoginScreen() {
 
   return (
     <View className="flex-1 bg-slate-50">
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}
           className="flex-1"
           keyboardShouldPersistTaps="handled"
@@ -96,14 +96,14 @@ export default function LoginScreen() {
                 />
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleLogin}
                 disabled={loading}
                 activeOpacity={0.8}
                 className={`w-full h-14 rounded-2xl mt-4 flex-row justify-center items-center shadow-md shadow-blue-200 ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
               >
                 {loading ? (
-                   <ActivityIndicator color="white" />
+                  <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white font-black text-lg tracking-tight">Iniciar Sesión</Text>
                 )}

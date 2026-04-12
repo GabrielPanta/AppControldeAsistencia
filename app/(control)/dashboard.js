@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '---';
   const s = String(dateStr).trim();
-  
+
   // 1. Caso DD/MM/YYYY o D/M/YYYY
   const slashParts = s.split('/');
   if (slashParts.length === 3) {
@@ -126,19 +126,19 @@ export default function ControlDashboard() {
     const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
     return (
-    <TouchableOpacity
-      onPress={() => router.push(`/(control)/report/${item.id}`)}
-      activeOpacity={0.7}
-      style={{ borderRadius: 32 }}
-      className="bg-white p-6 shadow-2xl shadow-indigo-500/5 border border-slate-100/50 mb-5 overflow-hidden"
-    >
-      <View className="flex-row justify-between items-center mb-5">
-        <View className="flex-row items-center flex-1">
-          <View 
-            style={{ borderRadius: 24 }}
-            className="w-16 h-16 bg-indigo-50 items-center justify-center mr-5 border border-indigo-100/50"
-          >
-              <Text className="text-3xl">📂</Text>
+      <TouchableOpacity
+        onPress={() => router.push(`/(control)/report/${item.id}`)}
+        activeOpacity={0.7}
+        style={{ borderRadius: 32 }}
+        className="bg-white p-6 shadow-2xl shadow-indigo-500/5 border border-slate-100/50 mb-5 overflow-hidden"
+      >
+        <View className="flex-row justify-between items-center mb-5">
+          <View className="flex-row items-center flex-1">
+            <View
+              style={{ borderRadius: 24 }}
+              className="w-16 h-16 bg-indigo-50 items-center justify-center mr-5 border border-indigo-100/50"
+            >
+              <Text className="text-3xl">📅</Text>
             </View>
             <View className="flex-1">
               <View className="flex-row items-center mb-1">
@@ -183,7 +183,7 @@ export default function ControlDashboard() {
       <StatusBar barStyle="dark-content" />
 
       {/* Header Premium con Estilo de Pantalla de Monitoreo */}
-      <View 
+      <View
         style={{ paddingTop: Platform.OS === 'android' ? insets.top + 25 : 20 }}
         className="px-6 pb-10 bg-white border-b border-slate-100 shadow-sm"
       >
@@ -208,27 +208,27 @@ export default function ControlDashboard() {
               </Text>
             </View>
           </View>
-            <View className="flex-row items-center">
-               {(auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe' && (
-                  <TouchableOpacity 
-                    onPress={() => router.push('/register')}
-                    className="w-12 h-12 bg-indigo-50 rounded-2xl items-center justify-center border border-indigo-100 mr-2 shadow-sm"
-                  >
-                    <Text className="text-xl">➕</Text>
-                  </TouchableOpacity>
-               )}
-               <TouchableOpacity 
-                 onPress={handleSignOut} 
-                 className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100"
-               >
-                 <Text className="text-xl">🚪</Text>
-               </TouchableOpacity>
-            </View>
+          <View className="flex-row items-center">
+            {(auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe' && (
+              <TouchableOpacity
+                onPress={() => router.push('/register')}
+                className="w-12 h-12 bg-indigo-50 rounded-2xl items-center justify-center border border-indigo-100 mr-2 shadow-sm"
+              >
+                <Text className="text-xl">➕</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={handleSignOut}
+              className="w-12 h-12 bg-slate-50 rounded-2xl items-center justify-center border border-slate-100"
+            >
+              <Text className="text-xl">🚪</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Widgets Estadísticos con Iconografía */}
         <View className="flex-row gap-4">
-          <View 
+          <View
             style={{ borderRadius: 40 }}
             className="flex-1 bg-indigo-600 p-7 shadow-2xl shadow-indigo-500/30 border border-indigo-500 overflow-hidden relative"
           >
@@ -247,7 +247,7 @@ export default function ControlDashboard() {
             </View>
           </View>
 
-          <View 
+          <View
             style={{ borderRadius: 40 }}
             className="flex-1 bg-slate-950 p-7 shadow-2xl shadow-slate-950/20 border border-slate-900 overflow-hidden relative"
           >
@@ -282,7 +282,7 @@ export default function ControlDashboard() {
             <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-[10px]">Actualizando datos...</Text>
           </View>
         ) : reports.length === 0 ? (
-          <View 
+          <View
             style={{ borderRadius: 40 }}
             className="bg-white p-10 border border-slate-100 items-center justify-center mt-4 shadow-sm"
           >
