@@ -1395,16 +1395,15 @@ function AnalyticsDashboard({ userData, onBack }) {
     const fetchAnalytics = async () => {
       try {
         setLoading(true);
-        // Traer los últimos 15 reportes
+        // Analizar TODO el historial disponible
         const reportsQ = query(
           collection(db, 'reports'),
           where('companyId', '==', userData.companyId)
         );
         const reportsSnap = await getDocs(reportsQ);
-        const reports = reportsSnap.docs
+        const reportsCount = reportsSnap.size;
           .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          .slice(0, 15);
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Analizando TODOS los datos históricos
 
         if (reports.length === 0) {
           setLoading(false);
@@ -1483,146 +1482,193 @@ function AnalyticsDashboard({ userData, onBack }) {
 
   const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center py-40 gap-4">
-      <Loader2 className="animate-spin text-indigo-600" size={48} />
-      <p className="text-slate-400 font-semibold text-xs uppercase tracking-widest">Calculando Métricas...</p>
-    </div>
-  );
-
   return (
-    <div className="space-y-12">
-      <div className="flex justify-between items-center mb-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold text-[10px] uppercase tracking-widest transition-all">
-          <ChevronLeft size={16} /> Volver al Inicio
-        </button>
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="space-y-8 max-w-[1600px] mx-auto pb-12"
+    >
+      {/* Executive Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/10 gap-4">
+        <div className="flex items-center gap-6">
+          <button onClick={onBack} className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-all">
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Business Intelligence</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+               <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+               Analizando {reportsCount} Reportes Históricos
+            </p>
+          </div>
+        </div>
+        
+        {/* Condensed Date Picker / Filter Info */}
+        <div className="flex items-center gap-2 px-6 py-2 bg-slate-50 rounded-2xl border border-slate-100/50">
+           <Calendar size={14} className="text-slate-400" />
+           <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mt-0.5">Visión Consolidada Global</span>
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Ultra-Dense KPI Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { title: 'Promedio Personal', val: Math.round(stats.totalWorkers), icon: <Users size={24} />, color: 'bg-blue-500' },
-          { title: 'Generar Marcación', val: Math.round(stats.noMarking), icon: <Map size={24} />, color: 'bg-amber-500' },
-          { title: 'Problemas Planilla', val: Math.round(stats.payrollIssue), icon: <AlertCircle size={24} />, color: 'bg-red-500' },
-          { title: '% Cumplimiento', val: stats.attendanceRate + '%', icon: <TrendingUp size={24} />, color: 'bg-green-500' },
+          { title: 'Personal Promedio', val: Math.round(stats.totalWorkers), sub: 'Personas / Día', icon: <Users size={18} />, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { title: 'Asist. Efectiva', val: stats.attendanceRate + '%', sub: 'Tasa de Cumplimiento', icon: <TrendingUp size={18} />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { title: 'Alertas Marcación', val: Math.round(stats.noMarking), sub: 'Casos Críticos', icon: <Map size={18} />, color: 'text-amber-600', bg: 'bg-amber-50' },
+          { title: 'Errores Planilla', val: Math.round(stats.payrollIssue), sub: 'Inconsistencias', icon: <AlertCircle size={18} />, color: 'text-rose-600', bg: 'bg-rose-50' },
         ].map((kpi, i) => (
           <motion.div
-            key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center justify-between"
+            key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}
+            className="bg-white p-5 rounded-[2.2rem] border border-slate-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-xl hover:shadow-slate-200/20"
           >
-            <div>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{kpi.title}</p>
-               <h4 className="text-3xl font-bold text-slate-800 tracking-tighter">{kpi.val}</h4>
-            </div>
-            <div className={`w-12 h-12 ${kpi.color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
+            <div className={`w-12 h-12 ${kpi.bg} ${kpi.color} rounded-2xl flex items-center justify-center shadow-sm -rotate-3 group-hover:rotate-0 transition-transform`}>
               {kpi.icon}
+            </div>
+            <div>
+               <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{kpi.title}</p>
+               <h4 className="text-xl font-black text-slate-900 tracking-tighter leading-tight">{kpi.val}</h4>
+               <p className="text-[7px] font-bold text-slate-300 uppercase tracking-widest">{kpi.sub}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Trend Chart */}
+      {/* Split Screen Analytics Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Trend Analysis (Main) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 bg-white p-6 sm:p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10"
         >
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-              <TrendingUp size={20} />
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
+                <LayoutDashboard size={16} />
+              </div>
+              <h3 className="font-bold text-base text-slate-900 tracking-tighter">Tendencia de Participación</h3>
             </div>
-            <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Tendencia de Asistencia</h3>
+            <div className="flex items-center gap-2">
+               <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600"></span> Proyectado
+               </span>
+               <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-4">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Realizado
+               </span>
+            </div>
           </div>
-          <div className="h-[350px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.trendData}>
                 <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1} />
+                  <linearGradient id="colorInd" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.05} />
                     <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 700 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 700 }} />
                 <Tooltip
-                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', shadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', padding: '12px' }}
                 />
-                <Area type="monotone" dataKey="total" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" name="Total" />
-                <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={3} fillOpacity={0} name="Real" />
+                <Area type="monotone" dataKey="total" stroke="#4F46E5" strokeWidth={2} fillOpacity={1} fill="url(#colorInd)" name="Total" />
+                <Area type="monotone" dataKey="completed" stroke="#10B981" strokeWidth={2} fillOpacity={0} name="Real" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </motion.div>
 
-        {/* Observation Analysis */}
+        {/* Observation Performance */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-          className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-col"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10 flex flex-col"
         >
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-              <BarChart3 size={20} />
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
+              <PieChart size={16} />
             </div>
-            <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
+            <h3 className="font-bold text-base text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
           </div>
 
-          <div className="flex-1 space-y-4">
+          <div className="flex-1 space-y-5">
             {stats.obsData.length > 0 ? stats.obsData.map((obs, idx) => {
-              const totalCompleted = stats.trendData.reduce((acc, curr) => acc + curr.completed, 0);
-              const perc = totalCompleted > 0 ? Math.round((obs.value / totalCompleted) * 100) : 0;
+              const totalVal = stats.obsData.reduce((acc, c) => acc + c.value, 0);
+              const perc = Math.round((obs.value / totalVal) * 100);
               return (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
-                    <span className="text-slate-600 truncate max-w-[150px]">{obs.name}</span>
-                    <span className="text-indigo-600 font-bold">{obs.value.toLocaleString()} <span className="text-slate-300 ml-1 text-[8px]">({perc}%)</span></span>
+                <div key={idx} className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[140px]">{obs.name}</span>
+                    <span className="text-[10px] font-black text-slate-900">{perc}%</span>
                   </div>
-                  <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${perc}%` }}
-                      transition={{ duration: 1, delay: 0.2 + (idx * 0.1) }}
-                      className="h-full bg-indigo-500 rounded-full"
-                    ></motion.div>
+                      className={`h-full rounded-full ${idx === 0 ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                    />
                   </div>
                 </div>
               );
             }) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-300">
-                <PieChart size={32} className="opacity-20 mb-2" />
-                <p className="text-[10px] font-bold uppercase tracking-widest">Sin datos</p>
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-300 opacity-30">
+                 <FileQuestion size={40} />
+                 <p className="text-[8px] font-bold uppercase tracking-widest mt-2">Sin datos suficientes</p>
               </div>
             )}
           </div>
         </motion.div>
       </div>
 
-      {/* Fundo / Zone Bar Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20"
-      >
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-            <Map size={20} />
+      {/* Row 2 Analytics - Unified Performance Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+        <motion.div
+           initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+           className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/10"
+        >
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
+              <Map size={16} />
+            </div>
+            <h3 className="font-bold text-base text-slate-900 tracking-tighter">Incidencia por Zona / Fundo</h3>
           </div>
-          <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Análisis por Fundo (Top 8)</h3>
+          <div className="h-[220px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats.zoneData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#94a3b8', fontWeight: 700 }} width={80} />
+                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '10px' }} />
+                <Bar dataKey="count" fill="#E2E8F0" radius={[0, 4, 4, 0]} barSize={12} name="Total" />
+                <Bar dataKey="marking" fill="#4F46E5" radius={[0, 4, 4, 0]} barSize={12} name="Marcación" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-between relative overflow-hidden group">
+           <div className="relative z-10">
+              <h4 className="text-xl font-bold tracking-tighter mb-4">Optimización Predictiva</h4>
+              <p className="text-xs text-slate-400 leading-relaxed mb-8">
+                 El sistema analiza patrones de asistencia histórica para identificar las zonas con mayor inconsistencia. Se recomienda reforzar la revisión en <span className="text-indigo-400 font-bold">{stats.zoneData[0]?.name || 'Zonas Críticas'}</span> durante los fines de mes.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10">
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Punto Crítico</p>
+                    <p className="font-bold text-sm truncate">{stats.obsData[0]?.name || 'N/A'}</p>
+                 </div>
+                 <div className="p-4 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10">
+                    <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Zona Mayor Impacto</p>
+                    <p className="font-bold text-sm truncate">{stats.zoneData[0]?.name || 'N/A'}</p>
+                 </div>
+              </div>
+           </div>
+           {/* Decorative */}
+           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
         </div>
-        <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.zoneData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-              <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '20px', border: 'none', shadow: 'none' }} />
-              <Bar dataKey="count" fill="#4F46E5" radius={[10, 10, 0, 0]} name="Total Trabajadores" />
-              <Bar dataKey="marking" fill="#F59E0B" radius={[10, 10, 0, 0]} name="Generar Marcación" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
+}
 }
 function ReportTableView({ report, onBack, userData }) {
   const [people, setPeople] = useState([]);
