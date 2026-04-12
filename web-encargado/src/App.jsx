@@ -1209,8 +1209,8 @@ function DashboardView({ userData, onSelectReport }) {
 
       {/* PANEL DERECHO: HISTORIAL */}
       <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-3' : 'lg:col-span-4'}>
-        <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
-          <div className="flex flex-col xl:flex-row justify-between items-center gap-6 mb-10 pb-10 border-b border-slate-50/50">
+        <div className="bg-white p-6 sm:p-8 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
+          <div className="flex flex-col xl:flex-row justify-between items-center gap-6 mb-6 pb-6 border-b border-slate-50/50">
             <div className="flex flex-col items-center xl:items-start gap-1">
               <div className="flex items-center gap-4">
                 <h3 className="font-bold text-4xl text-slate-900 tracking-tighter">Reportes</h3>
@@ -1289,7 +1289,7 @@ function DashboardView({ userData, onSelectReport }) {
                 return (
                   <React.Fragment key={r.id}>
                     {showHeader && (
-                      <div className="mt-8 mb-4 flex items-center gap-4">
+                      <div className="mt-6 mb-3 flex items-center gap-4">
                         <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] bg-slate-100 px-3 py-1 rounded-lg">
                           {currentMonth}
                         </span>
