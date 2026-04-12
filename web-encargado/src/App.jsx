@@ -1402,6 +1402,7 @@ function AnalyticsDashboard({ userData, onBack }) {
         );
         const reportsSnap = await getDocs(reportsQ);
         const reportsCount = reportsSnap.size;
+        const reports = reportsSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Analizando TODOS los datos históricos
 
