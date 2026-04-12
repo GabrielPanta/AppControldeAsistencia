@@ -1262,18 +1262,6 @@ function DashboardView({ userData, onSelectReport }) {
               </div>
             </div>
           </div>
-                onChange={setDashYear}
-                placeholder="Año"
-                isCompact={true}
-                className="min-w-[100px]"
-              />
-            </div>
-
-            <div className="hidden xl:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
-              <FileSpreadsheet size={16} className="text-blue-500" />
-              <span className="text-[11px] font-bold text-slate-600">{filteredReports.length}</span>
-            </div>
-          </div>
 
           <motion.div
             initial="hidden"
