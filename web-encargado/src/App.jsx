@@ -1210,59 +1210,55 @@ function DashboardView({ userData, onSelectReport }) {
       {/* PANEL DERECHO: HISTORIAL */}
       <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-3' : 'lg:col-span-4'}>
         <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 mb-8 pb-8 border-b border-slate-50">
-            <div>
-              <div className="flex items-center gap-3">
-                <h3 className="font-bold text-3xl text-slate-900 tracking-tighter">Reportes</h3>
-                <div className="px-2.5 py-1 bg-indigo-50 rounded-lg border border-indigo-100/50 flex items-center gap-2">
-                  <FileSpreadsheet size={12} className="text-indigo-600" />
-                  <span className="text-[10px] font-black text-indigo-700 tracking-widest">{filteredReports.length}</span>
+          <div className="flex flex-col xl:flex-row justify-between items-center gap-6 mb-10 pb-10 border-b border-slate-50/50">
+            <div className="flex flex-col items-center xl:items-start gap-1">
+              <div className="flex items-center gap-4">
+                <h3 className="font-bold text-4xl text-slate-900 tracking-tighter">Reportes</h3>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-100 rounded-full shadow-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black text-slate-600 tracking-widest">{filteredReports.length}</span>
                 </div>
               </div>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
-                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+              <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em] ml-1">
                  Empresa {userData?.companyId || '---'}
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-              {/* Unified Action Bar Container */}
-              <div className="flex items-center gap-2 bg-slate-50/50 p-1 rounded-2xl border border-slate-100 overflow-hidden">
+            <div className="flex items-center gap-3 w-full xl:w-auto">
+              <div className="flex-1 xl:flex-none flex items-center gap-1 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
                 {/* Search */}
-                <div className="relative">
-                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                <div className="relative flex-1 xl:flex-none">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                   <input
                     type="text"
-                    placeholder="BUSCAR..."
+                    placeholder="BUSCAR REPORTE..."
                     value={dashSearch}
                     onChange={e => setDashSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 bg-transparent border-none rounded-xl text-[9px] font-black uppercase tracking-[0.15em] outline-none transition-all placeholder:text-slate-300 w-full sm:w-48"
+                    className="pl-10 pr-4 py-2.5 bg-transparent border-none rounded-xl text-[10px] font-bold uppercase tracking-wider outline-none transition-all placeholder:text-slate-300 w-full xl:w-60"
                   />
                 </div>
 
-                <div className="w-px h-6 bg-slate-200/50 mx-1"></div>
+                <div className="w-px h-8 bg-slate-50 mx-1 hidden sm:block"></div>
 
-                {/* Filtro Mes */}
-                <CustomDropdown
-                  value={dashMonth}
-                  options={MONTHS}
-                  onChange={setDashMonth}
-                  placeholder="MES"
-                  isCompact={true}
-                  className="!bg-transparent !border-none !shadow-none min-w-[110px]"
-                />
-
-                <div className="w-px h-4 bg-slate-200/50 mx-1"></div>
-
-                {/* Filtro Año */}
-                <CustomDropdown
-                  value={dashYear}
-                  options={availableYears}
-                  onChange={setDashYear}
-                  placeholder="AÑO"
-                  isCompact={true}
-                  className="!bg-transparent !border-none !shadow-none min-w-[90px]"
-                />
+                <div className="flex items-center gap-1">
+                  <CustomDropdown
+                    value={dashMonth}
+                    options={MONTHS}
+                    onChange={setDashMonth}
+                    placeholder="MES"
+                    isCompact={true}
+                    className="!bg-transparent !border-none !shadow-none min-w-[110px]"
+                  />
+                  <div className="w-px h-4 bg-slate-100 mx-1 hidden sm:block"></div>
+                  <CustomDropdown
+                    value={dashYear}
+                    options={availableYears}
+                    onChange={setDashYear}
+                    placeholder="AÑO"
+                    isCompact={true}
+                    className="!bg-transparent !border-none !shadow-none min-w-[90px]"
+                  />
+                </div>
               </div>
             </div>
           </div>
