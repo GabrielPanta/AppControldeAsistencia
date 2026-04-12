@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle, Shield,
   Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick, BarChart3, PieChart as PieIcon, LineChart as LineIcon, TrendingUp, Users, Map, UploadCloud, Bus, RotateCcw, Fingerprint, MapPin,
-  Timer, FileText, AlertTriangle, RefreshCw, MoreHorizontal, UserX
+  Timer, FileText, AlertTriangle, RefreshCw, MoreHorizontal, UserX, Calendar, LayoutDashboard, FileQuestion
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -1596,7 +1596,7 @@ function AnalyticsDashboard({ userData, onBack }) {
         >
           <div className="flex items-center gap-3 mb-8">
             <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
-              <PieChart size={16} />
+              <PieIcon size={16} />
             </div>
             <h3 className="font-bold text-base text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
           </div>
