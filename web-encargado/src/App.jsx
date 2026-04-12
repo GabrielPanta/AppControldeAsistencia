@@ -1140,41 +1140,69 @@ function DashboardView({ userData, onSelectReport }) {
       className="grid grid-cols-1 lg:grid-cols-4 gap-8"
     >
       <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-1' : 'hidden'}>
-        <div className="space-y-6">
-          {/* Quick Stats Sidebar (Simplified) */}
+        <div className="space-y-6 lg:sticky lg:top-8">
+          {/* Dashboard Summary Sidebar */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/5"
+            className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-2xl shadow-slate-200/20"
           >
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Consolidado General</p>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 mb-8">
+               <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                  <BarChart3 size={20} />
+               </div>
+               <div>
+                  <h3 className="font-bold text-slate-900 text-lg tracking-tighter leading-none">Resumen Global</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Empresa {userData?.companyId}</p>
+               </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-3xl font-bold text-slate-900 tracking-tighter">{globalStats.percent}%</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Progreso</p>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm shadow-indigo-100">
-                  <BarChart3 size={24} />
+                  <p className="text-4xl font-black text-slate-900 tracking-tighter">{globalStats.percent}%</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Progreso Total</p>
                 </div>
               </div>
-              
-              <div className="pt-4 grid grid-cols-2 gap-4 border-t border-slate-50">
-                <div>
-                  <p className="text-sm font-bold text-slate-800">{globalStats.reviewedWorkers}</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                  <p className="text-lg font-bold text-slate-900">{globalStats.reviewedWorkers}</p>
                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Revisados</p>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-800">{globalStats.totalWorkers}</p>
-                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Totales</p>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                   <p className="text-lg font-bold text-slate-900">{globalStats.totalWorkers}</p>
+                   <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Personal</p>
                 </div>
               </div>
             </div>
           </motion.div>
-          
-          <div className="p-4 bg-indigo-600 rounded-[2rem] text-white shadow-xl shadow-indigo-200">
-             <p className="text-[9px] font-bold opacity-70 uppercase tracking-widest mb-1">Dato Importante</p>
-             <p className="text-xs font-semibold leading-relaxed">Los reportes se procesan automáticamente al subir el Excel. Recuerda cerrar el reporte una vez finalizada la revisión.</p>
+
+          {/* Clean Upload Button Section */}
+          <div className="bg-slate-950 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-950/20 relative overflow-hidden group">
+             <div className="relative z-10">
+                <h4 className="font-bold text-lg tracking-tighter mb-2">Nuevo Reporte</h4>
+                <p className="text-xs text-indigo-200 mb-6 opacity-80">Sube el Excel diario para actualizar el control de asistencia.</p>
+                
+                <label className="block w-full">
+                  <input type="file" className="hidden" accept=".xlsx" onChange={e => processFile(e.target.files[0])} disabled={uploading} />
+                  <div className={`
+                    w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all cursor-pointer font-bold text-xs uppercase tracking-widest
+                    ${uploading ? 'bg-indigo-600/50 text-indigo-300' : 'bg-indigo-600 hover:bg-white hover:text-indigo-600 hover:scale-[1.02] shadow-lg shadow-indigo-500/30'}
+                  `}>
+                    {uploading ? (
+                      <Loader2 className="animate-spin" size={16} />
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Importar Excel
+                      </>
+                    )}
+                  </div>
+                </label>
+             </div>
+             {/* Decorative Background Element */}
+             <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/20 rounded-full blur-3xl group-hover:bg-indigo-500/40 transition-colors"></div>
           </div>
         </div>
       </div>
@@ -1235,102 +1263,96 @@ function DashboardView({ userData, onSelectReport }) {
               hidden: { opacity: 0 },
               show: { opacity: 1, transition: { staggerChildren: 0.05 } }
             }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="flex flex-col gap-3"
           >
-            {/* NEW REPORT CARD (Excel Upload integrated) */}
-            {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
-              <motion.div
-                variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
-                whileHover={{ y: -5 }}
-                className="group relative h-[280px] rounded-[2.5rem] bg-indigo-50/30 border-2 border-dashed border-indigo-200/50 flex flex-col items-center justify-center p-8 transition-all hover:bg-white hover:border-indigo-400 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer"
-              >
-                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-20" accept=".xlsx" onChange={e => processFile(e.target.files[0])} disabled={uploading} />
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  {uploading ? <Loader2 className="animate-spin text-indigo-600" size={32} /> : <UploadCloud className="text-indigo-600" size={32} />}
-                </div>
-                <p className="font-bold text-slate-900 text-sm tracking-tighter">Subir Reporte</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Arrastra tu archivo aquí</p>
-                {uploading && (
-                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-[2.5rem] z-30 flex items-center justify-center">
-                    <Loader2 className="animate-spin text-indigo-600" size={32} />
-                  </div>
-                )}
-              </motion.div>
-            )}
+            {/* Logic for Month Grouping Rendering */}
+            {(() => {
+              let lastMonth = '';
+              return filteredReports.map((r, i) => {
+                const total = r.totalWorkers || 0;
+                const reviewed = r.reviewedWorkers || 0;
+                const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
+                const isClosed = ['CLOSED', 'CERRADO'].includes(r.status);
+                
+                const dateParts = String(r.date || '').split('/');
+                const currentMonth = dateParts.length === 3 ? `${MONTHS[parseInt(dateParts[1],10)]} ${dateParts[2]}` : '';
+                const showHeader = currentMonth !== lastMonth;
+                lastMonth = currentMonth;
 
-            {filteredReports.map((r, i) => {
-              const total = r.totalWorkers || 0;
-              const reviewed = r.reviewedWorkers || 0;
-              const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
-              const isClosed = ['CLOSED', 'CERRADO'].includes(r.status);
-              
-              // SVG Circle properties
-              const radius = 35;
-              const circumference = 2 * Math.PI * radius;
-              const offset = circumference - (percent / 100) * circumference;
-
-              return (
-                <motion.div
-                  key={r.id}
-                  variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
-                  whileHover={{ y: -5 }}
-                  onClick={() => onSelectReport(r)}
-                  className="group relative h-[280px] rounded-[2.5rem] bg-white border border-slate-100 p-8 shadow-xl shadow-slate-200/10 transition-all hover:shadow-2xl hover:shadow-slate-300/20 cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Día Registrado</p>
-                      <h4 className="font-bold text-slate-900 text-2xl tracking-tighter">{formatDisplayDate(r.date)}</h4>
-                    </div>
-                    <div className={`px-2 py-1 rounded-xl text-[8px] font-bold uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600'}`}>
-                      {isClosed ? 'Cerrado' : 'Abierto'}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center justify-center relative py-4">
-                    <svg className="w-24 h-24 transform -rotate-90">
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r={radius}
-                        className="stroke-slate-100"
-                        strokeWidth="8"
-                        fill="transparent"
-                      />
-                      <motion.circle
-                        cx="48"
-                        cy="48"
-                        r={radius}
-                        className={isClosed ? 'stroke-emerald-500' : 'stroke-indigo-500'}
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray={circumference}
-                        initial={{ strokeDashoffset: circumference }}
-                        animate={{ strokeDashoffset: offset }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-xl font-bold text-slate-900 leading-none">{percent}%</span>
-                      <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Revisión</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col">
-                        <p className="text-lg font-bold text-slate-900 leading-none">{total}</p>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Personal</p>
+                return (
+                  <React.Fragment key={r.id}>
+                    {showHeader && (
+                      <div className="mt-8 mb-4 flex items-center gap-4">
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] bg-slate-100 px-3 py-1 rounded-lg">
+                          {currentMonth}
+                        </span>
+                        <div className="h-px bg-slate-100 flex-1"></div>
                       </div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-300 group-hover:bg-slate-900 group-hover:text-white transition-all">
-                      <ChevronRight size={16} />
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
+                    )}
+                    
+                    <motion.div
+                      variants={{ hidden: { opacity: 0, x: -10 }, show: { opacity: 1, x: 0 } }}
+                      whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.7)' }}
+                      onClick={() => onSelectReport(r)}
+                      className={`
+                        group relative flex items-center justify-between p-4 px-6 rounded-2xl transition-all cursor-pointer border
+                        ${isClosed ? 'bg-emerald-50/20 border-emerald-50/50' : 'bg-white border-white/60 hover:border-slate-200 shadow-sm'}
+                      `}
+                    >
+                      {/* Left Status Bar Indicator */}
+                      <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-full transition-all duration-500 ${isClosed ? 'bg-emerald-500' : 'bg-indigo-300 group-hover:bg-indigo-600'}`}></div>
+
+                      <div className="flex items-center gap-12 flex-1 ml-4">
+                        <div className="min-w-[120px]">
+                          <p className="font-bold text-slate-900 text-base tracking-tighter leading-none">Día {formatDisplayDate(r.date)}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className={`text-[8px] font-bold uppercase tracking-widest ${isClosed ? 'text-emerald-600' : 'text-slate-400'}`}>
+                              {isClosed ? 'Finalizado' : 'En Proceso'}
+                            </span>
+                            <span className="text-slate-200">|</span>
+                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">
+                               Subido {new Date(r.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-16 flex-1">
+                          {/* Progress Micro-Widget */}
+                          <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Revisión de Personal</span>
+                              <span className="text-[10px] font-black text-slate-900">{percent}%</span>
+                            </div>
+                            <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percent}%` }}
+                                className={`h-full rounded-full ${isClosed ? 'bg-emerald-500' : 'bg-indigo-600'}`}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-12">
+                            <div className="flex flex-col">
+                              <p className="text-sm font-bold text-slate-900">{total}</p>
+                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Trabajadores</p>
+                            </div>
+                            <div className="flex flex-col">
+                              <p className="text-sm font-bold text-slate-900">{reviewed}</p>
+                              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Procesados</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-50 text-slate-300 group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm">
+                        <ChevronRight size={16} />
+                      </div>
+                    </motion.div>
+                  </React.Fragment>
+                );
+              });
+            })()}
           </motion.div>
 
           {reports.length === 0 && (
