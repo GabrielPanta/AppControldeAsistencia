@@ -7,5 +7,15 @@ body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
+}
+
+.mesh-bg {
+  background-color: #fdfdfd;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(37, 100%, 94%, 0.35) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(210, 20%, 96%, 0.35) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(40, 100%, 96%, 0.35) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(0, 0%, 95%, 0.35) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, hsla(37, 100%, 98%, 0.35) 0px, transparent 50%);
+  background-attachment: fixed;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { auth, db, firebaseConfig } from './firebase';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
@@ -7,10 +8,11 @@ import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle,
-  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick, BarChart3, PieChart as PieIcon, LineChart as LineIcon, TrendingUp, Users, Map, UploadCloud, Bus, RotateCcw, Fingerprint, MapPin
+  Upload, LogOut, FileSpreadsheet, CheckCircle, AlertCircle, Shield,
+  Loader2, Search, ChevronRight, User, Hash, Clock, X, Save, Lock, Info, ChevronLeft, Trash2, MousePointerClick, BarChart3, PieChart as PieIcon, LineChart as LineIcon, TrendingUp, Users, Map, UploadCloud, Bus, RotateCcw, Fingerprint, MapPin,
+  Timer, FileText, AlertTriangle, RefreshCw, MoreHorizontal, UserX
 } from 'lucide-react';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
@@ -25,6 +27,17 @@ const OBSERVACIONES = [
   "Canje",
   "Otro"
 ];
+export const OBSERVACIONES_CONFIG = {
+  "Indicó Generar Marcación": { icon: Fingerprint, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100", hover: "hover:bg-indigo-600" },
+  "Olvidó marcar": { icon: Clock, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", hover: "hover:bg-amber-600" },
+  "Ausente": { icon: UserX, color: "text-red-600", bg: "bg-red-50", border: "border-red-100", hover: "hover:bg-red-600" },
+  "Tardanza": { icon: Timer, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100", hover: "hover:bg-orange-600" },
+  "Permiso": { icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100", hover: "hover:bg-blue-600" },
+  "Trabajador no reportado en Planilla": { icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", hover: "hover:bg-rose-600" },
+  "Canje": { icon: RefreshCw, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", hover: "hover:bg-emerald-600" },
+  "Otro": { icon: MoreHorizontal, color: "text-slate-600", bg: "bg-slate-50", border: "border-slate-100", hover: "hover:bg-slate-600" },
+  "default": { icon: Info, color: "text-slate-400", bg: "bg-slate-50", border: "border-slate-100", hover: "hover:bg-slate-600" }
+};
 
 const getCompanyName = (id) => {
   switch (String(id)) {
@@ -38,7 +51,7 @@ const getCompanyName = (id) => {
 const formatDisplayDate = (dateStr) => {
   if (!dateStr) return '---';
   const s = String(dateStr).trim();
-  
+
   // 1. Caso DD/MM/YYYY o D/M/YYYY
   const slashParts = s.split('/');
   if (slashParts.length === 3) {
@@ -91,18 +104,18 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const selectedOption = options.find(o => 
+  const selectedOption = options.find(o =>
     (typeof o === 'string' ? o : o.value) === value
   );
-  
-  const selectedLabel = selectedOption 
-    ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label) 
+
+  const selectedLabel = selectedOption
+    ? (typeof selectedOption === 'string' ? selectedOption : selectedOption.label)
     : placeholder;
 
-  const shouldAddPrefix = placeholder && 
-                         !selectedLabel.includes(placeholder) && 
-                         !placeholder.includes('---') && 
-                         !placeholder.toLowerCase().includes('seleccionar');
+  const shouldAddPrefix = placeholder &&
+    !selectedLabel.includes(placeholder) &&
+    !placeholder.includes('---') &&
+    !placeholder.toLowerCase().includes('seleccionar');
 
   const displayValue = shouldAddPrefix
     ? `${placeholder}: ${selectedLabel}`
@@ -114,7 +127,7 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between transition-all outline-none ${isCompact ? 'px-3 py-0.5 rounded-lg text-[9px]' : 'px-5 py-2.5 rounded-xl text-[10px]'} font-black uppercase tracking-widest ${isOpen ? 'ring-2 ring-blue-100 bg-white border-blue-200' : 'bg-slate-50 border-transparent'} border text-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'hover:bg-white hover:border-slate-200'}`}
+        className={`w-full flex items-center justify-between transition-all outline-none ${isCompact ? 'px-3 py-0.5 rounded-lg text-[9px]' : 'px-5 py-2.5 rounded-xl text-[10px]'} font-bold uppercase tracking-widest ${isOpen ? 'ring-2 ring-blue-100 bg-white border-blue-200' : 'bg-slate-50 border-transparent'} border text-slate-700 ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400' : 'hover:bg-white hover:border-slate-200'}`}
       >
         <span className="whitespace-normal leading-tight text-left flex-1 pr-2">{displayValue}</span>
         <ChevronRight className={`transition-transform duration-300 ${isOpen ? '-rotate-90' : 'rotate-90 text-slate-300'}`} size={12} />
@@ -126,11 +139,10 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
             initial={{ opacity: 0, y: 5, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 5, scale: 0.98 }}
-            className={`absolute z-[110] mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden py-2 ${
-              isCompact 
-                ? 'right-0 min-w-[220px] w-max max-w-[320px]' 
-                : 'left-0 min-w-full w-max max-w-[400px]'
-            } shadow-indigo-500/10`}
+            className={`absolute z-[110] mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden py-2 ${isCompact
+              ? 'right-0 min-w-[220px] w-max max-w-[320px]'
+              : 'left-0 min-w-full w-max max-w-[400px]'
+              } shadow-indigo-500/10`}
             style={{ top: '100%' }}
           >
             <div className="max-h-[400px] overflow-y-auto custom-scrollbar px-1.5">
@@ -148,11 +160,10 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
                       onChange(optVal);
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all rounded-xl mb-1 last:mb-0 ${
-                      isActive 
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'
-                    }`}
+                    className={`w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest transition-all rounded-xl mb-1 last:mb-0 ${isActive
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="flex-1 leading-relaxed whitespace-normal break-words">{optLabel}</span>
@@ -165,6 +176,136 @@ const CustomDropdown = ({ value, options, onChange, placeholder, className, isCo
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+const QuickObservationPicker = ({ value, onChange, disabled = false, onOpenChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, isUp: true });
+  const dropdownRef = useRef(null);
+
+  const updatePosition = () => {
+    if (dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const spaceBelow = windowHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Un menú de 8 items en 2 columnas mide aprox 250-300px
+      const isUp = spaceBelow < 320 && spaceAbove > 320;
+
+      setCoords({
+        top: isUp ? rect.top : rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        isUp
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('scroll', () => setIsOpen(false), true);
+      window.addEventListener('resize', () => setIsOpen(false));
+    }
+    return () => {
+      window.removeEventListener('scroll', () => setIsOpen(false), true);
+      window.removeEventListener('resize', () => setIsOpen(false));
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (onOpenChange) onOpenChange(isOpen);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        // También ignorar si el clic es dentro del portal (usando un id o clase especial)
+        if (!event.target.closest('.observation-picker-portal')) {
+          setIsOpen(false);
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const config = OBSERVACIONES_CONFIG[value] || OBSERVACIONES_CONFIG["default"];
+  const Icon = config.icon;
+
+  return (
+    <div className="relative inline-block w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full flex items-center gap-1.5 transition-all outline-none px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border ${isOpen ? 'ring-2 ring-blue-100 bg-white border-blue-200' : `${config.bg} ${config.border} ${config.color}`} ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-md hover:scale-[1.02] active:scale-95'}`}
+      >
+        <Icon size={10} className="flex-shrink-0" />
+        <span className="truncate flex-1 text-left">{value || '---'}</span>
+        <ChevronRight className={`flex-shrink-0 transition-transform duration-300 ${isOpen ? '-rotate-90' : 'rotate-90 opacity-40'}`} size={10} />
+      </button>
+
+      {isOpen && createPortal(
+        <div className="observation-picker-portal fixed inset-0 z-[9999] pointer-events-none">
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: coords.isUp ? 10 : -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: coords.isUp ? 10 : -10 }}
+              className={`absolute pointer-events-auto bg-white rounded-2xl shadow-2xl border border-slate-100 p-3 min-w-[280px] shadow-indigo-500/10 ${coords.isUp ? 'origin-bottom-right' : 'origin-top-right'
+                }`}
+              style={{
+                top: coords.isUp ? 'auto' : `${coords.top + 8}px`,
+                bottom: coords.isUp ? `${window.innerHeight - coords.top + 8}px` : 'auto',
+                left: `${coords.right - 280}px`
+              }}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {OBSERVACIONES.map((obs, i) => {
+                  const obsCfg = OBSERVACIONES_CONFIG[obs] || OBSERVACIONES_CONFIG["default"];
+                  const ObsIcon = obsCfg.icon;
+                  const isActive = value === obs;
+
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        onChange(obs === value ? "" : obs);
+                        setIsOpen(false);
+                      }}
+                      className={`flex items-center gap-2 p-2 rounded-xl text-[9px] font-bold text-left transition-all border ${isActive
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100'
+                        : 'bg-slate-50 text-slate-600 border-transparent hover:bg-white hover:border-slate-200 hover:text-indigo-600'
+                        }`}
+                    >
+                      <div className={`p-1 rounded-lg ${isActive ? 'bg-white/20' : obsCfg.bg}`}>
+                        <ObsIcon size={12} className={isActive ? 'text-white' : obsCfg.color} />
+                      </div>
+                      <span className="leading-none">{obs}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {value && (
+                <button
+                  onClick={() => { onChange(""); setIsOpen(false); }}
+                  className="w-full mt-3 p-2 bg-slate-50 rounded-xl text-[8px] font-bold text-slate-400 uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all border border-dashed border-slate-200"
+                >
+                  Limpiar Selección
+                </button>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
@@ -184,14 +325,14 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
         return;
       }
       setSaving(true);
-      
+
       // Calcular qué campos fueron modificados realmente
       const modifiedFields = { ...(person.modifiedFields || {}) };
-      
+
       // Comparar datos principales
       if (formData.nombreCompleto !== person.nombreCompleto) modifiedFields['NOMBRE'] = true;
       if (formData.dni !== person.dni) modifiedFields['DNI'] = true;
-      
+
       // Comparar datos extra
       Object.keys(formData.datosExtra).forEach(key => {
         const newVal = String(formData.datosExtra[key] || '').trim();
@@ -219,14 +360,14 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
       />
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 10 }} 
-        animate={{ opacity: 1, scale: 1, y: 0 }} 
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         className="relative bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
       >
@@ -234,9 +375,9 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
           <div>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-              <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Edición Profesional</p>
+              <p className="text-blue-600 text-[10px] font-bold uppercase tracking-widest">Edición Profesional</p>
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tighter">Ficha del Trabajador</h3>
+            <h3 className="text-2xl font-bold text-slate-900 tracking-tighter">Ficha del Trabajador</h3>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl bg-white text-slate-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all border border-slate-100">
             <X size={18} />
@@ -246,18 +387,18 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
           {/* DATOS PRINCIPALES: 2 COLUMNAS */}
           <div className="space-y-4">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <User size={14} /> Información Personal
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+                <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
                 <div className={`w-full border rounded-xl px-4 py-2.5 font-bold text-[11px] cursor-not-allowed ${person.modifiedFields?.['NOMBRE'] ? 'bg-amber-100/30 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400 border-transparent'}`}>
                   {formData.nombreCompleto}
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Documento DNI</label>
+                <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Documento DNI</label>
                 <div className={`w-full border rounded-xl px-4 py-2.5 font-bold text-[11px] cursor-not-allowed ${person.modifiedFields?.['DNI'] ? 'bg-amber-100/30 text-amber-900 border-amber-200' : 'bg-slate-50 text-slate-400'}`}>
                   {formData.dni || '---'}
                 </div>
@@ -267,7 +408,7 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
 
           {/* DATOS EXTRA: 3 COLUMNAS */}
           <div className="space-y-4">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Map size={14} /> Datos de Gestión e Identificación
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-5">
@@ -284,21 +425,21 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
 
                 return (
                   <div key={`${key}-${idx}`} className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 truncate block">
+                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest ml-1 truncate block">
                       {key} {isHighlighted && <span className="text-amber-500 ml-1">★</span>}
                     </label>
                     {isEditable ? (
-                      <input 
-                        type="text" 
-                        className={`w-full border rounded-xl px-4 py-2.5 font-black text-[11px] transition-all outline-none 
-                          ${isHighlighted 
-                            ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-100 text-amber-900' 
+                      <input
+                        type="text"
+                        className={`w-full border rounded-xl px-4 py-2.5 font-semibold text-[11px] transition-all outline-none 
+                          ${isHighlighted
+                            ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-100 text-amber-900'
                             : 'bg-white border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 text-slate-800'
                           }`}
-                        value={value || ''} 
-                        onChange={e => setFormData({ 
-                          ...formData, 
-                          datosExtra: { ...formData.datosExtra, [key]: e.target.value } 
+                        value={value || ''}
+                        onChange={e => setFormData({
+                          ...formData,
+                          datosExtra: { ...formData.datosExtra, [key]: e.target.value }
                         })}
                       />
                     ) : (
@@ -316,14 +457,14 @@ const WorkerEditModal = ({ person, reportId, reportStatus, tableColumns, onClose
         <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex items-center justify-end gap-4">
           <button
             onClick={onClose}
-            className="px-8 bg-white text-slate-400 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all border border-slate-200"
+            className="px-8 bg-white text-slate-400 py-3.5 rounded-2xl font-bold uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all border border-slate-200"
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-10 bg-indigo-600 hover:bg-blue-600 text-white py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
+            className="px-10 bg-indigo-600 hover:bg-blue-600 text-white py-3.5 rounded-2xl font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50"
           >
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
             Guardar Cambios
@@ -400,14 +541,14 @@ function App() {
         );
       case 'register-user':
         return (
-          <RegisterUserView 
-            onBack={() => setCurrentView('dashboard')} 
+          <RegisterUserView
+            onBack={() => setCurrentView('dashboard')}
           />
         );
       case 'analytics':
         return (
-          <AnalyticsDashboard 
-            userData={userData} 
+          <AnalyticsDashboard
+            userData={userData}
             onBack={() => setCurrentView('dashboard')}
           />
         );
@@ -417,7 +558,7 @@ function App() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col">
+    <div className="min-h-screen flex items-center justify-center bg-[#f4f7ff] flex-col">
       <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
       <p className="mt-4 text-gray-500 font-medium">Cargando sistema...</p>
     </div>
@@ -426,9 +567,14 @@ function App() {
   if (!user) return <LoginView {...{ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass }} />;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-      <Header userData={userData} handleLogout={handleLogout} setView={setCurrentView} />
-      <main className="flex-1 w-full mx-auto p-4 md:px-10 md:py-4">
+    <div className="min-h-screen mesh-bg flex flex-col font-sans">
+      <Header
+        userData={userData}
+        handleLogout={handleLogout}
+        setView={setCurrentView}
+        currentView={currentView}
+      />
+      <main className="flex-1 w-full mx-auto p-4 md:px-10 pt-20 pb-8 transition-all duration-500">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
@@ -454,7 +600,7 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
           <div className="w-24 h-24 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
             <span className="text-5xl">🏢</span>
           </div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Asistencia <span className="text-blue-600">Web</span></h1>
+          <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Asistencia <span className="text-blue-600">Web</span></h1>
           <p className="text-slate-400 mt-3 font-semibold text-xs tracking-widest uppercase">Gestión Administrativa</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
@@ -468,9 +614,9 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
             className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-blue-100 transition-all outline-none text-slate-800 font-medium"
             value={authPass} onChange={e => setAuthPass(e.target.value)} required
           />
-          <button 
-            type="submit" 
-            className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xl shadow-blue-600/30 uppercase tracking-widest text-xs border border-blue-500"
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-xl shadow-blue-600/30 uppercase tracking-widest text-xs border border-blue-500"
           >
             Ingresar Sistema
           </button>
@@ -480,45 +626,124 @@ function LoginView({ handleLogin, authEmail, setAuthEmail, authPass, setAuthPass
   );
 }
 
+// --- COMPONENTS ---
+const NavButton = ({ active, onClick, icon: Icon, label, activeColor = 'indigo' }) => {
+  const colors = {
+    indigo: { icon: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100/50' },
+    emerald: { icon: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100/50' },
+    orange: { icon: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100/50' },
+    slate: { icon: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200/50' }
+  };
+  
+  const currentColor = colors[activeColor] || colors.indigo;
+
+  return (
+    <button
+      onClick={onClick}
+      className={`relative flex items-center gap-2 px-6 py-2 transition-all duration-300 rounded-xl group overflow-hidden`}
+    >
+      <Icon
+        size={16}
+        className={`relative z-10 transition-colors duration-300 ${active ? currentColor.icon : 'text-slate-400 group-hover:text-slate-600'}`}
+      />
+      <span className={`relative z-10 font-bold text-[10px] uppercase tracking-wider transition-colors duration-300 ${active ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}>
+        {label}
+      </span>
+      {active && (
+        <motion.div
+          layoutId="navCapsule"
+          className={`absolute inset-0 ${currentColor.bg} border ${currentColor.border} rounded-xl`}
+          initial={false}
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+        />
+      )}
+    </button>
+  );
+};
+
 // --- HEADER ---
-function Header({ userData, handleLogout, setView }) {
+function Header({ userData, handleLogout, setView, currentView }) {
   const isAdmin = (auth.currentUser?.email || userData?.email || '')?.trim().toLowerCase() === 'gpanta@verfrut.pe';
 
   return (
-    <header className="bg-white border-b border-slate-100 px-8 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-      <div 
-        className="flex items-center gap-5 cursor-pointer" 
-        onClick={() => setView('dashboard')}
-      >
-        <div className="relative w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl">A</div>
-        <div>
-          <h2 className="font-extrabold text-slate-900 text-lg">Reporte de Control de Asistencia</h2>
-          <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest leading-none mt-1">{userData?.name} / {userData?.role} • Empresa {userData?.companyId}</p>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => setView('analytics')}
-          className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-black text-[10px] uppercase tracking-widest bg-indigo-50 px-4 py-2 rounded-xl transition-all border border-indigo-100"
-        >
-          <BarChart3 size={14} />
-          Análisis Dashboard
-        </button>
+    <header className="fixed top-0 left-0 right-0 z-[100]">
+      <div className="bg-white/80 backdrop-blur-3xl border-b border-slate-100 shadow-sm">
+        <div className="max-w-[1600px] mx-auto h-16 flex justify-between items-center px-6">
+          <div className="flex items-center gap-6">
+            <div
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => setView('dashboard')}
+            >
+              <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-white shadow-lg shadow-slate-100 group-hover:scale-105 transition-transform">
+                <BarChart3 size={20} />
+              </div>
+              <div className="hidden lg:block">
+                <h2 className="font-bold text-slate-800 text-[15px] leading-none tracking-tight text-slate-900">Sistema de <span className="text-slate-500">Gestión Asistencia</span></h2>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <p className="text-slate-400 text-[8px] font-bold uppercase tracking-widest">{userData?.name || 'Usuario'}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="hidden xl:flex items-center gap-2 border-l border-slate-100 pl-6 text-[9px] uppercase tracking-widest font-bold text-slate-300">
+              <span className="hover:text-slate-600 transition-colors cursor-pointer" onClick={() => setView('dashboard')}>DASHBOARD</span>
+              <ChevronRight size={10} className="text-slate-200" />
+              <span className="text-slate-500">
+                {currentView === 'dashboard' ? 'Reportes' : 
+                 currentView === 'analytics' ? 'Analytics' : 
+                 currentView === 'register-user' ? 'Administración' : 
+                 'Detalle'}
+              </span>
+            </div>
+          </div>
 
-        {isAdmin && (
-           <button 
-             onClick={() => setView('register-user')}
-             className="flex items-center gap-2 text-slate-600 hover:text-slate-700 font-black text-[10px] uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-xl transition-all border border-slate-100"
-           >
-             <User size={14} />
-             Gestión Usuarios
-           </button>
-        )}
-         <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 font-bold transition-colors">
-           <LogOut size={18} />
-           <span className="hidden sm:inline">Cerrar Sesión</span>
-         </button>
+          <div className="flex-1"></div>
+
+          <nav className="hidden md:flex items-center gap-1 bg-white/40 p-1 rounded-xl border border-white/60 mr-4">
+            <NavButton
+              active={currentView === 'dashboard' || currentView === 'report-detail'}
+              onClick={() => setView('dashboard')}
+              icon={FileSpreadsheet}
+              label="Reportes"
+              activeColor="indigo"
+            />
+            <NavButton
+              active={currentView === 'analytics'}
+              onClick={() => setView('analytics')}
+              icon={BarChart3}
+              label="Analytics"
+              activeColor="emerald"
+            />
+            {isAdmin && (
+              <NavButton
+                active={currentView === 'register-user'}
+                onClick={() => setView('register-user')}
+                icon={User}
+                label="Usuarios"
+                activeColor="orange"
+              />
+            )}
+          </nav>
+
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:block text-right pr-4 border-r border-slate-100">
+              <p className="text-[9px] font-bold text-slate-900 uppercase tracking-widest leading-none mb-1">Empresa {userData?.companyId}</p>
+              <div className="flex items-center justify-end gap-1.5 text-[8px] font-semibold text-slate-500 tracking-wide uppercase">
+                <Shield size={10} />
+                <span>{userData?.role}</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              className="w-10 h-10 bg-white/40 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl border border-white/60 transition-all group flex items-center justify-center relative overflow-hidden active:scale-95"
+              title="Cerrar Sesión"
+            >
+              <LogOut size={18} className="relative z-10 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+        </div>
       </div>
     </header>
   );
@@ -572,16 +797,16 @@ function RegisterUserView({ onBack }) {
       if (secondaryApp) {
         await deleteApp(secondaryApp);
       }
-      
+
       secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
       const secondaryAuth = getAuth(secondaryApp);
-      
+
       const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth, 
-        formData.email.trim(), 
+        secondaryAuth,
+        formData.email.trim(),
         formData.password
       );
-      
+
       const uid = userCredential.user.uid;
       await setDoc(doc(db, 'users', uid), {
         uid,
@@ -594,7 +819,7 @@ function RegisterUserView({ onBack }) {
 
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
-      
+
       setSuccess(true);
       setFormData({ name: '', email: '', password: '', role: 'CONTROL', companyId: '14' });
       setTimeout(() => setSuccess(false), 3000);
@@ -607,22 +832,22 @@ function RegisterUserView({ onBack }) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-6">
-      <div className="flex justify-between items-center mb-10">
+    <div className="max-w-5xl mx-auto pt-2 pb-6 px-6">
+      <div className="flex justify-between items-center mb-4">
         <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-slate-600 font-bold transition-colors">
           <ChevronLeft size={20} />
           Volver al Dashboard
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Registration Form */}
-        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5">
-          <div className="flex items-center gap-6 mb-10">
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5">
+          <div className="flex items-center gap-6 mb-6">
             <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-2xl">👤</div>
             <div>
-              <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Registrar Usuario</h2>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Nuevo acceso administrativo</p>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tighter">Registrar Usuario</h2>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Nuevo acceso administrativo</p>
             </div>
           </div>
 
@@ -635,48 +860,48 @@ function RegisterUserView({ onBack }) {
 
           <form onSubmit={handleRegister} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Nombre Completo</label>
               <input
                 type="text" placeholder="Ej. Juan Pérez"
                 className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
-                value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required
+                value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Correo Electrónico</label>
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Correo Electrónico</label>
               <input
                 type="email" placeholder="email@verfrut.pe"
                 className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
-                value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required
+                value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Contraseña</label>
               <input
                 type="password" placeholder="Mínimo 6 caracteres"
                 className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-4 focus:ring-indigo-100 transition-all outline-none text-slate-800 font-medium"
-                value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required
+                value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rol</label>
-                <select 
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Rol</label>
+                <select
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none outline-none font-bold text-slate-700 appearance-none"
-                  value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
+                  value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}
                 >
                   <option value="CONTROL">CONTROL</option>
                   <option value="ENCARGADO">ENCARGADO</option>
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Empresa</label>
-                <select 
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest ml-1">Empresa</label>
+                <select
                   className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none outline-none font-bold text-slate-700 appearance-none"
-                  value={formData.companyId} onChange={e => setFormData({...formData, companyId: e.target.value})}
+                  value={formData.companyId} onChange={e => setFormData({ ...formData, companyId: e.target.value })}
                 >
                   <option value="9">RAPEL (9)</option>
                   <option value="14">VERFRUT (14)</option>
@@ -687,7 +912,7 @@ function RegisterUserView({ onBack }) {
 
             <button
               type="submit" disabled={loading}
-              className="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 uppercase tracking-widest text-[10px] mt-4 flex items-center justify-center gap-3 disabled:bg-slate-300"
+              className="w-full bg-slate-900 text-white font-bold py-5 rounded-[2rem] hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10 uppercase tracking-widest text-[10px] mt-4 flex items-center justify-center gap-3 disabled:bg-slate-300"
             >
               {loading ? <Loader2 className="animate-spin" /> : 'Registrar Nuevo Acceso'}
             </button>
@@ -695,10 +920,10 @@ function RegisterUserView({ onBack }) {
         </div>
 
         {/* User List */}
-        <div className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5 overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-black text-slate-900 tracking-tighter">Usuarios Registrados</h3>
-            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black">{users.length} TOTAL</span>
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-indigo-500/5 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-slate-900 tracking-tighter">Usuarios Registrados</h3>
+            <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-bold">{users.length} TOTAL</span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
@@ -735,14 +960,14 @@ function RegisterUserView({ onBack }) {
 function DashboardView({ userData, onSelectReport }) {
   const [reports, setReports] = useState([]);
   const [uploading, setUploading] = useState(false);
-  
+
   // Filtros
   const [dashSearch, setDashSearch] = useState('');
   const [dashMonth, setDashMonth] = useState('Todos');
   const [dashYear, setDashYear] = useState('Todos');
 
   const MONTHS = [
-    'Todos', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+    'Todos', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
   ];
 
@@ -790,8 +1015,8 @@ function DashboardView({ userData, onSelectReport }) {
           const s = String(date);
           // Si parece una fecha ISO (YYYY-MM-DD), la formateamos
           if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-             const parts = s.split('T')[0].split('-');
-             return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            const parts = s.split('T')[0].split('-');
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
           }
           return s;
         }
@@ -861,15 +1086,15 @@ function DashboardView({ userData, onSelectReport }) {
     return reports.filter(r => {
       const dateStr = String(r.date || '');
       const parts = dateStr.split('/');
-      
+
       const matchSearch = dateStr.toLowerCase().includes(dashSearch.toLowerCase());
-      
+
       let matchMonth = true;
       if (dashMonth !== 'Todos' && parts.length === 3) {
         const mIdx = parseInt(parts[1], 10);
         matchMonth = MONTHS[mIdx] === dashMonth;
       }
-      
+
       let matchYear = true;
       if (dashYear !== 'Todos' && parts.length === 3) {
         matchYear = parts[2] === dashYear;
@@ -899,9 +1124,9 @@ function DashboardView({ userData, onSelectReport }) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    return { 
-      totalWorkers: totalW, 
-      reviewedWorkers: reviewedW, 
+    return {
+      totalWorkers: totalW,
+      reviewedWorkers: reviewedW,
       topObs,
       percent: totalW > 0 ? Math.round((reviewedW / totalW) * 100) : 0
     };
@@ -909,89 +1134,75 @@ function DashboardView({ userData, onSelectReport }) {
 
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="grid grid-cols-1 lg:grid-cols-4 gap-8"
     >
-      {/* PANEL IZQUIERDO: CARGA */}
-      {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
-        <div className="lg:col-span-1 space-y-6">
-          <motion.div 
-            whileHover={{ y: -2 }}
-            className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/20"
+      <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-1' : 'hidden'}>
+        <div className="space-y-6">
+          {/* Quick Stats Sidebar (Simplified) */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white shadow-xl shadow-slate-200/5"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
-                <UploadCloud size={20} />
-              </div>
-              <h3 className="font-black text-slate-800 text-lg tracking-tighter">Subida de Excel</h3>
-            </div>
-
-            <label className="relative block group">
-              <input type="file" className="hidden" accept=".xlsx" onChange={e => processFile(e.target.files[0])} disabled={uploading} />
-              <div className={`
-                border-2 border-dashed rounded-[2rem] p-10 text-center transition-all cursor-pointer
-                ${uploading ? 'bg-slate-50 border-slate-200' : 'bg-slate-50/50 border-slate-100 group-hover:bg-blue-50/50 group-hover:border-blue-300 group-hover:shadow-lg group-hover:shadow-blue-500/5'}
-              `}>
-                <div className="relative mx-auto mb-4 w-16 h-16">
-                  <div className="absolute inset-0 bg-blue-100/50 rounded-full scale-0 group-hover:scale-110 transition-transform duration-500"></div>
-                  <Upload 
-                    className={`relative mx-auto transition-all duration-300 ${uploading ? 'animate-bounce text-slate-300' : 'text-slate-300 group-hover:text-blue-500 group-hover:-translate-y-1'}`} 
-                    size={40} 
-                  />
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Consolidado General</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-slate-900 tracking-tighter">{globalStats.percent}%</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Progreso</p>
                 </div>
-                <span className="block font-black text-slate-400 group-hover:text-blue-600 text-[10px] uppercase tracking-widest mb-1">
-                  {uploading ? 'PROCESANDO...' : 'Importar Archivo'}
-                </span>
-                <p className="text-[10px] font-bold text-slate-300 px-4 leading-relaxed">Arrastra tu archivo Excel (.xlsx) aquí para iniciar el reporte</p>
-              </div>
-              {uploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] rounded-[2rem]">
-                  <Loader2 className="animate-spin text-blue-600" size={32} />
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm shadow-indigo-100">
+                  <BarChart3 size={24} />
                 </div>
-              )}
-            </label>
-            
-            <div className="mt-8 pt-8 border-t border-slate-50 space-y-3">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Requisitos:</p>
-              <div className="flex items-center gap-2 text-slate-400">
-                <CheckCircle size={12} className="text-emerald-500" />
-                <span className="text-[10px] font-bold">Encabezados correctos</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-400">
-                <CheckCircle size={12} className="text-emerald-500" />
-                <span className="text-[10px] font-bold">Formato .xlsx</span>
+              
+              <div className="pt-4 grid grid-cols-2 gap-4 border-t border-slate-50">
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{globalStats.reviewedWorkers}</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Revisados</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{globalStats.totalWorkers}</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Totales</p>
+                </div>
               </div>
             </div>
           </motion.div>
+          
+          <div className="p-4 bg-indigo-600 rounded-[2rem] text-white shadow-xl shadow-indigo-200">
+             <p className="text-[9px] font-bold opacity-70 uppercase tracking-widest mb-1">Dato Importante</p>
+             <p className="text-xs font-semibold leading-relaxed">Los reportes se procesan automáticamente al subir el Excel. Recuerda cerrar el reporte una vez finalizada la revisión.</p>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* PANEL DERECHO: HISTORIAL */}
       <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-3' : 'lg:col-span-4'}>
         <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
             <div className="flex-1">
-              <h3 className="font-black text-2xl sm:text-3xl text-slate-900 tracking-tighter">Historial de Reportes</h3>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Empresa {userData?.companyId || '---'}</p>
+              <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 tracking-tighter">Reportes</h3>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Empresa {userData?.companyId || '---'}</p>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
               {/* Buscador */}
               <div className="relative">
                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                <input 
+                <input
                   type="text"
                   placeholder="Buscar reporte..."
                   value={dashSearch}
                   onChange={e => setDashSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none transition-all placeholder:text-slate-300"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none transition-all placeholder:text-slate-300"
                 />
               </div>
 
               {/* Filtro Mes */}
-              <CustomDropdown 
+              <CustomDropdown
                 value={dashMonth}
                 options={MONTHS}
                 onChange={setDashMonth}
@@ -1001,7 +1212,7 @@ function DashboardView({ userData, onSelectReport }) {
               />
 
               {/* Filtro Año */}
-              <CustomDropdown 
+              <CustomDropdown
                 value={dashYear}
                 options={availableYears}
                 onChange={setDashYear}
@@ -1013,90 +1224,121 @@ function DashboardView({ userData, onSelectReport }) {
 
             <div className="hidden xl:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
               <FileSpreadsheet size={16} className="text-blue-500" />
-              <span className="text-[11px] font-black text-slate-600">{filteredReports.length}</span>
+              <span className="text-[11px] font-bold text-slate-600">{filteredReports.length}</span>
             </div>
           </div>
 
-          <motion.div 
+          <motion.div
             initial="hidden"
             animate="show"
             variants={{
               hidden: { opacity: 0 },
-              show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+              show: { opacity: 1, transition: { staggerChildren: 0.05 } }
             }}
-            className="space-y-4"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
+            {/* NEW REPORT CARD (Excel Upload integrated) */}
+            {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
+              <motion.div
+                variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
+                whileHover={{ y: -5 }}
+                className="group relative h-[280px] rounded-[2.5rem] bg-indigo-50/30 border-2 border-dashed border-indigo-200/50 flex flex-col items-center justify-center p-8 transition-all hover:bg-white hover:border-indigo-400 hover:shadow-2xl hover:shadow-indigo-500/10 cursor-pointer"
+              >
+                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-20" accept=".xlsx" onChange={e => processFile(e.target.files[0])} disabled={uploading} />
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  {uploading ? <Loader2 className="animate-spin text-indigo-600" size={32} /> : <UploadCloud className="text-indigo-600" size={32} />}
+                </div>
+                <p className="font-bold text-slate-900 text-sm tracking-tighter">Subir Reporte</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Arrastra tu archivo aquí</p>
+                {uploading && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] rounded-[2.5rem] z-30 flex items-center justify-center">
+                    <Loader2 className="animate-spin text-indigo-600" size={32} />
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {filteredReports.map((r, i) => {
               const total = r.totalWorkers || 0;
               const reviewed = r.reviewedWorkers || 0;
               const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
               const isClosed = ['CLOSED', 'CERRADO'].includes(r.status);
+              
+              // SVG Circle properties
+              const radius = 35;
+              const circumference = 2 * Math.PI * radius;
+              const offset = circumference - (percent / 100) * circumference;
 
               return (
-                <motion.div 
+                <motion.div
                   key={r.id}
-                  variants={{
-                    hidden: { opacity: 0, x: -20 },
-                    show: { opacity: 1, x: 0 }
-                  }}
-                  whileHover={{ x: 8 }}
+                  variants={{ hidden: { opacity: 0, scale: 0.95 }, show: { opacity: 1, scale: 1 } }}
+                  whileHover={{ y: -5 }}
                   onClick={() => onSelectReport(r)}
-                  className="group relative flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 rounded-3xl bg-slate-50 hover:bg-white hover:shadow-2xl hover:shadow-blue-500/10 transition-all cursor-pointer border border-transparent hover:border-blue-100"
+                  className="group relative h-[280px] rounded-[2.5rem] bg-white border border-slate-100 p-8 shadow-xl shadow-slate-200/10 transition-all hover:shadow-2xl hover:shadow-slate-300/20 cursor-pointer flex flex-col justify-between"
                 >
-                  {/* Icon & Primary Info */}
-                  <div className="flex items-center gap-6 mb-4 sm:mb-0">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-500 ${isClosed ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600 group-hover:scale-110 group-hover:rotate-3'}`}>
-                      {isClosed ? <CheckCircle size={28} /> : <FileSpreadsheet size={28} />}
-                    </div>
+                  <div className="flex justify-between items-start">
                     <div>
-                      <div className="flex items-center gap-3">
-                        <p className="font-black text-slate-900 text-xl tracking-tight leading-none">Día {formatDisplayDate(r.date)}</p>
-                        <div className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600 animate-pulse'}`}>
-                          {isClosed ? 'Cerrado' : 'Abierto'}
-                        </div>
-                      </div>
-                      <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-2 flex items-center gap-1.5">
-                        <Users size={10} className="text-slate-300" />
-                        {total} TRABAJADORES
-                        <span className="text-slate-200">|</span>
-                        <Clock size={10} className="text-slate-300" />
-                        SUBIDO: {new Date(r.createdAt).toLocaleDateString()}
-                      </p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Día Registrado</p>
+                      <h4 className="font-bold text-slate-900 text-2xl tracking-tighter">{formatDisplayDate(r.date)}</h4>
+                    </div>
+                    <div className={`px-2 py-1 rounded-xl text-[8px] font-bold uppercase tracking-widest ${isClosed ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600'}`}>
+                      {isClosed ? 'Cerrado' : 'Abierto'}
                     </div>
                   </div>
 
-                  {/* Progress & Actions */}
-                  <div className="flex items-center gap-8 w-full sm:w-auto mt-2 sm:mt-0">
-                    <div className="hidden md:flex flex-col items-end gap-2 w-40">
-                      <div className="flex items-center justify-between w-full">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Progreso</span>
-                        <span className="text-[9px] font-black text-slate-600">{percent}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${percent}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
-                          className={`h-full rounded-full ${isClosed ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                        />
+                  <div className="flex flex-col items-center justify-center relative py-4">
+                    <svg className="w-24 h-24 transform -rotate-90">
+                      <circle
+                        cx="48"
+                        cy="48"
+                        r={radius}
+                        className="stroke-slate-100"
+                        strokeWidth="8"
+                        fill="transparent"
+                      />
+                      <motion.circle
+                        cx="48"
+                        cy="48"
+                        r={radius}
+                        className={isClosed ? 'stroke-emerald-500' : 'stroke-indigo-500'}
+                        strokeWidth="8"
+                        fill="transparent"
+                        strokeDasharray={circumference}
+                        initial={{ strokeDashoffset: circumference }}
+                        animate={{ strokeDashoffset: offset }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-xl font-bold text-slate-900 leading-none">{percent}%</span>
+                      <span className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mt-1">Revisión</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col">
+                        <p className="text-lg font-bold text-slate-900 leading-none">{total}</p>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Personal</p>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100/50 text-slate-300 group-hover:bg-blue-600 group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-200 transition-all duration-300">
-                      <ChevronRight size={20} />
+                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-300 group-hover:bg-slate-900 group-hover:text-white transition-all">
+                      <ChevronRight size={16} />
                     </div>
                   </div>
                 </motion.div>
               );
             })}
           </motion.div>
-          
+
           {reports.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
                 <FileSpreadsheet size={32} className="text-slate-200" />
               </div>
-              <h4 className="text-slate-400 font-black text-sm uppercase tracking-widest">No hay reportes disponibles</h4>
+              <h4 className="text-slate-400 font-bold text-sm uppercase tracking-widest">No hay reportes disponibles</h4>
               <p className="text-slate-300 text-xs mt-2 font-medium">Sube tu primer archivo Excel para comenzar</p>
             </div>
           )}
@@ -1126,7 +1368,7 @@ function AnalyticsDashboard({ userData, onBack }) {
         setLoading(true);
         // Traer los últimos 15 reportes
         const reportsQ = query(
-          collection(db, 'reports'), 
+          collection(db, 'reports'),
           where('companyId', '==', userData.companyId)
         );
         const reportsSnap = await getDocs(reportsQ);
@@ -1153,12 +1395,12 @@ function AnalyticsDashboard({ userData, onBack }) {
         allPeopleSnaps.forEach((snap, idx) => {
           const report = reports[idx];
           const people = snap.docs.map(d => d.data());
-          
+
           let reportPresent = 0;
           people.forEach(p => {
             totalWorkers++;
             const resp = String(p.respuestaObservacion || '').toUpperCase();
-            
+
             // Métricas basadas en la RESPUESTA oficial del encargado
             if (resp.includes('GENERAR MARCACION') || resp.includes('OLVIDO')) noMarking++;
             if (resp.includes('PLANILLA')) payrollIssue++;
@@ -1215,14 +1457,14 @@ function AnalyticsDashboard({ userData, onBack }) {
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-40 gap-4">
       <Loader2 className="animate-spin text-indigo-600" size={48} />
-      <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Calculando Métricas...</p>
+      <p className="text-slate-400 font-semibold text-xs uppercase tracking-widest">Calculando Métricas...</p>
     </div>
   );
 
   return (
     <div className="space-y-12">
       <div className="flex justify-between items-center mb-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-black text-[10px] uppercase tracking-widest transition-all">
+        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold text-[10px] uppercase tracking-widest transition-all">
           <ChevronLeft size={16} /> Volver al Inicio
         </button>
       </div>
@@ -1230,18 +1472,18 @@ function AnalyticsDashboard({ userData, onBack }) {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: 'Promedio Personal', val: Math.round(stats.totalWorkers), icon: <Users size={24}/>, color: 'bg-blue-500' },
-          { title: 'Generar Marcación', val: Math.round(stats.noMarking), icon: <Map size={24}/>, color: 'bg-amber-500' },
-          { title: 'Problemas Planilla', val: Math.round(stats.payrollIssue), icon: <AlertCircle size={24}/>, color: 'bg-red-500' },
-          { title: '% Cumplimiento', val: stats.attendanceRate + '%', icon: <TrendingUp size={24}/>, color: 'bg-green-500' },
+          { title: 'Promedio Personal', val: Math.round(stats.totalWorkers), icon: <Users size={24} />, color: 'bg-blue-500' },
+          { title: 'Generar Marcación', val: Math.round(stats.noMarking), icon: <Map size={24} />, color: 'bg-amber-500' },
+          { title: 'Problemas Planilla', val: Math.round(stats.payrollIssue), icon: <AlertCircle size={24} />, color: 'bg-red-500' },
+          { title: '% Cumplimiento', val: stats.attendanceRate + '%', icon: <TrendingUp size={24} />, color: 'bg-green-500' },
         ].map((kpi, i) => (
-          <motion.div 
+          <motion.div
             key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
             className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center justify-between"
           >
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{kpi.title}</p>
-              <h4 className="text-3xl font-black text-slate-800 tracking-tighter">{kpi.val}</h4>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{kpi.title}</p>
+               <h4 className="text-3xl font-bold text-slate-800 tracking-tighter">{kpi.val}</h4>
             </div>
             <div className={`w-12 h-12 ${kpi.color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
               {kpi.icon}
@@ -1252,7 +1494,7 @@ function AnalyticsDashboard({ userData, onBack }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Trend Chart */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="lg:col-span-2 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20"
         >
@@ -1260,21 +1502,21 @@ function AnalyticsDashboard({ userData, onBack }) {
             <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
               <TrendingUp size={20} />
             </div>
-            <h3 className="font-black text-xl text-slate-900 tracking-tighter">Tendencia de Asistencia</h3>
+            <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Tendencia de Asistencia</h3>
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.trendData}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }}
                 />
                 <Area type="monotone" dataKey="total" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" name="Total" />
@@ -1285,7 +1527,7 @@ function AnalyticsDashboard({ userData, onBack }) {
         </motion.div>
 
         {/* Observation Analysis */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="lg:col-span-1 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-col"
         >
@@ -1293,21 +1535,21 @@ function AnalyticsDashboard({ userData, onBack }) {
             <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
               <BarChart3 size={20} />
             </div>
-            <h3 className="font-black text-xl text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
+            <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Ranking de Respuestas</h3>
           </div>
-          
+
           <div className="flex-1 space-y-4">
             {stats.obsData.length > 0 ? stats.obsData.map((obs, idx) => {
               const totalCompleted = stats.trendData.reduce((acc, curr) => acc + curr.completed, 0);
               const perc = totalCompleted > 0 ? Math.round((obs.value / totalCompleted) * 100) : 0;
               return (
                 <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest">
                     <span className="text-slate-600 truncate max-w-[150px]">{obs.name}</span>
                     <span className="text-indigo-600 font-bold">{obs.value.toLocaleString()} <span className="text-slate-300 ml-1 text-[8px]">({perc}%)</span></span>
                   </div>
                   <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${perc}%` }}
                       transition={{ duration: 1, delay: 0.2 + (idx * 0.1) }}
@@ -1319,7 +1561,7 @@ function AnalyticsDashboard({ userData, onBack }) {
             }) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-300">
                 <PieChart size={32} className="opacity-20 mb-2" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Sin datos</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest">Sin datos</p>
               </div>
             )}
           </div>
@@ -1327,7 +1569,7 @@ function AnalyticsDashboard({ userData, onBack }) {
       </div>
 
       {/* Fundo / Zone Bar Chart */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
         className="bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/20"
       >
@@ -1335,13 +1577,13 @@ function AnalyticsDashboard({ userData, onBack }) {
           <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
             <Map size={20} />
           </div>
-          <h3 className="font-black text-xl text-slate-900 tracking-tighter">Análisis por Fundo (Top 8)</h3>
+          <h3 className="font-bold text-xl text-slate-900 tracking-tighter">Análisis por Fundo (Top 8)</h3>
         </div>
         <div className="h-[400px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={stats.zoneData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 800 }} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} />
               <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '20px', border: 'none', shadow: 'none' }} />
               <Bar dataKey="count" fill="#4F46E5" radius={[10, 10, 0, 0]} name="Total Trabajadores" />
@@ -1387,7 +1629,7 @@ function ReportTableView({ report, onBack, userData }) {
     });
     return unsub;
   }, [report.id]);
-  
+
 
   const tableColumns = useMemo(() => {
     const allCols = [];
@@ -1459,7 +1701,7 @@ function ReportTableView({ report, onBack, userData }) {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!currentReport.id) return;
-      
+
       const responseBreakdown = {};
       people.forEach(p => {
         if (p.respuestaObservacion) {
@@ -1467,8 +1709,8 @@ function ReportTableView({ report, onBack, userData }) {
         }
       });
 
-      const needsUpdate = 
-        currentReport.reviewedWorkers !== progress.completed || 
+      const needsUpdate =
+        currentReport.reviewedWorkers !== progress.completed ||
         currentReport.totalWorkers !== progress.total ||
         JSON.stringify(currentReport.responseBreakdown || {}) !== JSON.stringify(responseBreakdown);
 
@@ -1484,7 +1726,7 @@ function ReportTableView({ report, onBack, userData }) {
         }
       }
     }, 1000); // 1 segundo de debounce
-    
+
     return () => clearTimeout(timer);
   }, [currentReport.id, progress.completed, progress.total]);
 
@@ -1677,10 +1919,10 @@ function ReportTableView({ report, onBack, userData }) {
   const handleDownloadExcel = async () => {
     try {
       // 1. Definir columnas base (usando el orden original si existe)
-      const baseColumns = (currentReport.columnOrder && currentReport.columnOrder.length > 0) 
-        ? currentReport.columnOrder 
+      const baseColumns = (currentReport.columnOrder && currentReport.columnOrder.length > 0)
+        ? currentReport.columnOrder
         : tableColumns;
-      
+
       const exportHeaders = [...baseColumns, 'RESPUESTA OBSERVACIÓN'];
 
       // 2. Crear Libro y Hoja con ExcelJS
@@ -1716,7 +1958,7 @@ function ReportTableView({ report, onBack, userData }) {
           return formatHora(col, val);
         });
         rowValues.push(p.respuestaObservacion || 'PENDIENTE');
-        
+
         const row = worksheet.addRow(rowValues);
         row.height = 20;
         row.eachCell((cell) => {
@@ -1755,7 +1997,7 @@ function ReportTableView({ report, onBack, userData }) {
   const handleBulkUpdateWeb = async (val) => {
     const idsToUpdate = selectedIds.size > 0 ? Array.from(selectedIds) : filtered.map(p => p.id);
     if (idsToUpdate.length === 0 || !val) return;
-    
+
     if (['CLOSED', 'CERRADO'].includes(currentReport.status)) {
       alert("No se pueden realizar cambios masivos en un reporte cerrado.");
       return;
@@ -1808,35 +2050,35 @@ function ReportTableView({ report, onBack, userData }) {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-3 pb-10">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2 pb-4 text-slate-800">
       <div className="bg-white p-4 sm:p-6 rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col gap-4">
         {/* FILA 1: INFORMACIÓN Y ACCIONES PRINCIPALES */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-1">
-            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-bold hover:text-blue-600 transition-all text-[9px] uppercase tracking-widest group">
+            <button onClick={onBack} className="flex items-center gap-2 text-slate-400 font-semibold hover:text-blue-600 transition-all text-[9px] uppercase tracking-widest group">
               <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Volver al listado
             </button>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tighter leading-none">Reporte {formatDisplayDate(currentReport?.date)}</h2>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tighter leading-none">Reporte {formatDisplayDate(currentReport?.date)}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
                 <div className={`w-1 h-1 rounded-full ${['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'bg-blue-600 animate-pulse' : 'bg-green-600'}`}></div>
                 {['OPEN', 'ABIERTO'].includes(currentReport.status) ? 'En Proceso' : 'Cerrado'}
               </div>
               <span className="text-slate-200 text-[10px]">•</span>
               <div className="flex items-center gap-2 text-slate-400">
                 <Users size={12} />
-                <p className="text-[9px] font-black uppercase tracking-widest">{currentReport.totalWorkers || 0} Registros</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest">{currentReport.totalWorkers || 0} Registros</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-             {/* Borrado de Reporte (Solo Encargados) */}
-             {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
+            {/* Borrado de Reporte (Solo Encargados) */}
+            {String(userData?.role || '').toUpperCase() === 'ENCARGADO' && (
               <button
                 onClick={handleDelete}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-red-50 hover:border-red-500"
+                className="flex items-center gap-2 px-4 py-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all border border-red-50 hover:border-red-500"
               >
                 {saving ? <Loader2 className="animate-spin" size={12} /> : <Trash2 size={12} />}
                 Eliminar
@@ -1847,7 +2089,7 @@ function ReportTableView({ report, onBack, userData }) {
               <button
                 onClick={handleReopen}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-amber-100"
+                className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all border border-amber-100"
               >
                 <RotateCcw size={12} /> Reabrir
               </button>
@@ -1855,7 +2097,7 @@ function ReportTableView({ report, onBack, userData }) {
 
             <button
               onClick={handleDownloadExcel}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white hover:bg-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 active:scale-95"
+              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white hover:bg-blue-600 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all shadow-lg shadow-slate-200 active:scale-95"
             >
               <FileSpreadsheet size={14} /> Exportar Excel
             </button>
@@ -1871,7 +2113,7 @@ function ReportTableView({ report, onBack, userData }) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
               <input
                 type="text" placeholder="BUSCAR TRABAJADOR..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-100/30 font-black uppercase tracking-widest text-slate-700 text-[10px] placeholder:text-slate-300 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 rounded-xl border border-transparent outline-none focus:bg-white focus:border-blue-100 focus:ring-4 focus:ring-blue-100/30 font-bold uppercase tracking-widest text-slate-700 text-[10px] placeholder:text-slate-300 transition-all"
                 value={search} onChange={e => setSearch(e.target.value)}
               />
             </div>
@@ -1921,7 +2163,7 @@ function ReportTableView({ report, onBack, userData }) {
                   <button
                     onClick={() => setIsBulkModalOpen(true)}
                     disabled={saving}
-                    className={`px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${selectedIds.size > 0 ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' : 'bg-white text-indigo-600 border-indigo-100 hover:bg-slate-50'}`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${selectedIds.size > 0 ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-100' : 'bg-white text-indigo-600 border-indigo-100 hover:bg-slate-50'}`}
                   >
                     <MousePointerClick size={14} />
                     {selectedIds.size > 0 ? `Asignar (${selectedIds.size})` : `Asignar Todos (${filtered.length})`}
@@ -1932,7 +2174,7 @@ function ReportTableView({ report, onBack, userData }) {
                   <button
                     onClick={handleClose}
                     disabled={saving || !progress.isAllDone}
-                    className={`px-5 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${progress.isAllDone ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-blue-600 hover:shadow-blue-200' : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'}`}
+                    className={`px-5 py-2.5 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border shadow-sm w-full sm:w-auto ${progress.isAllDone ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-blue-600 hover:shadow-blue-200' : 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'}`}
                   >
                     {progress.isAllDone ? <CheckCircle size={14} /> : <Loader2 className="animate-spin" size={14} />}
                     Finalizar
@@ -1944,19 +2186,19 @@ function ReportTableView({ report, onBack, userData }) {
         </div>
       </div>
       <div className="bg-white rounded-[1.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
-        <div className="overflow-x-auto max-h-[75vh]">
+        <div className="overflow-auto max-h-[70vh] custom-scrollbar">
           <table className="w-full text-left border-collapse table-fixed min-w-max">
-            <thead className="bg-[#f8fafc] border-b border-slate-100 sticky top-0 z-40">
+            <thead className="bg-[#f8fafc] border-b border-slate-200 sticky top-0 z-40">
               <tr>
-                <th className="px-2 py-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-[#f8fafc] z-50 border-b border-r border-slate-100 flex items-center justify-center" style={{ width: `${COL_WIDTHS['CHECK']}px`, left: 0 }}>
-                  <input 
-                    type="checkbox" 
+                <th className="px-2 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest sticky left-0 bg-[#f8fafc] z-50 border-b border-r border-slate-100 flex items-center justify-center" style={{ width: `${COL_WIDTHS['CHECK']}px`, left: 0 }}>
+                  <input
+                    type="checkbox"
                     className="w-4 h-4 rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     checked={filtered.length > 0 && selectedIds.size >= filtered.length}
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="px-2 py-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky bg-[#f8fafc] z-50 border-b border-r border-slate-100 text-center" style={{ width: `${COL_WIDTHS['#']}px`, left: `${COL_WIDTHS['CHECK']}px` }}>#</th>
+                <th className="px-2 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest sticky bg-[#f8fafc] z-50 border-b border-r border-slate-100 text-center" style={{ width: `${COL_WIDTHS['#']}px`, left: `${COL_WIDTHS['CHECK']}px` }}>#</th>
                 {tableColumns.map(col => {
                   const isSticky = stickyConfig.stickySet.has(col);
                   const isLast = col === stickyConfig.lastCol;
@@ -1964,7 +2206,7 @@ function ReportTableView({ report, onBack, userData }) {
                   return (
                     <th
                       key={col}
-                      className={`px-2 py-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-[#f8fafc] z-50 border-b border-slate-100' : ''} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
+                      className={`px-2 py-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest ${isSticky ? 'sticky bg-[#f8fafc] z-50 border-b border-slate-100' : ''} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
                       style={{
                         left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
                         width: `${w}px`,
@@ -1975,7 +2217,7 @@ function ReportTableView({ report, onBack, userData }) {
                     </th>
                   );
                 })}
-                <th className="px-2 py-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest bg-blue-50 sticky right-0 z-40 border-l border-blue-100" style={{ width: '180px' }}>Respuesta Observación</th>
+                <th className="px-2 py-1.5 text-[9px] font-bold text-blue-600 uppercase tracking-widest bg-blue-50 sticky right-0 z-40 border-l border-blue-100" style={{ width: '180px' }}>Respuesta Observación</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -1984,8 +2226,8 @@ function ReportTableView({ report, onBack, userData }) {
                 return (
                   <tr key={p.id} className={`hover:bg-blue-50 transition-colors group ${selectedIds.has(p.id) ? 'bg-indigo-50/50' : (isEdited ? 'bg-amber-50/40' : '')}`}>
                     <td className={`px-2 py-0 sticky left-0 z-20 border-b border-r border-slate-100 text-center transition-colors ${selectedIds.has(p.id) ? 'bg-indigo-50 group-hover:bg-blue-50' : (isEdited ? 'bg-amber-50 group-hover:bg-blue-50' : 'bg-slate-50 group-hover:bg-blue-50')}`} style={{ width: `${COL_WIDTHS['CHECK']}px`, left: 0 }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                         checked={selectedIds.has(p.id)}
                         onChange={() => toggleSelectOne(p.id)}
@@ -1997,17 +2239,17 @@ function ReportTableView({ report, onBack, userData }) {
                       const isLast = col === stickyConfig.lastCol;
                       const w = getColWidth(col);
                       const isModified = col === 'NOMBRE' ? p.modifiedFields?.['NOMBRE'] : (col === 'DNI' ? p.modifiedFields?.['DNI'] : !!p.modifiedFields?.[col]);
-                      const val = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] : 
-                                 (col === 'NOMBRE' ? p.nombreCompleto : 
-                                 (col === 'DNI' ? p.dni : 
-                                 (col === 'CODIGO' ? p.codigo : 
-                                 (col === 'OBSERVACION' ? p.observacion : ''))));
+                      const val = p.datosExtra?.[col] !== undefined ? p.datosExtra[col] :
+                        (col === 'NOMBRE' ? p.nombreCompleto :
+                          (col === 'DNI' ? p.dni :
+                            (col === 'CODIGO' ? p.codigo :
+                              (col === 'OBSERVACION' ? p.observacion : ''))));
 
                       return (
-                          <td
-                            key={col}
-                            onDoubleClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
-                            className={`px-2 py-0 text-[9px] font-medium border-b cursor-pointer leading-tight ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' : ''} ${isModified ? 'bg-amber-100/30 text-amber-900 border-amber-200' : (isSticky ? (isEdited ? 'bg-amber-50/10' : 'bg-white') : 'text-slate-700')} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
+                        <td
+                          key={col}
+                          onDoubleClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
+                          className={`px-2 py-0 text-[9px] font-medium border-b cursor-pointer leading-tight ${isSticky ? 'sticky group-hover:bg-blue-50 z-20 ' : ''} ${isModified ? 'bg-amber-100/30 text-amber-900 border-amber-200' : (isSticky ? (isEdited ? 'bg-amber-50/10' : 'bg-white') : 'text-slate-700')} ${isLast ? 'border-r-2 border-slate-200' : 'border-r border-slate-100'}`}
                           style={{
                             left: isSticky ? `${stickyConfig.offsets[col]}px` : 'auto',
                             width: `${w}px`,
@@ -2021,24 +2263,20 @@ function ReportTableView({ report, onBack, userData }) {
                         </td>
                       );
                     })}
-                    <td 
-                      className={`px-2 py-0 bg-white group-hover:bg-blue-50 sticky right-0 border-b border-l border-blue-100 transition-all ${activeDropdown === p.id ? 'z-[100]' : 'z-30'}`} 
+                    <td
+                      className={`px-2 py-0 bg-white group-hover:bg-blue-50 sticky right-0 border-b border-l border-blue-100 transition-all ${activeDropdown === p.id ? 'z-[100]' : 'z-30'}`}
                       style={{ width: '150px' }}
                     >
                       <div className="flex items-center gap-1.5">
                         <div className="flex-1 min-w-0">
-                          <CustomDropdown
+                          <QuickObservationPicker
                             value={p.respuestaObservacion || ''}
-                            options={['', ...OBSERVACIONES]}
                             onChange={(val) => updateRespuesta(p.id, val)}
                             onOpenChange={(open) => setActiveDropdown(open ? p.id : null)}
-                            placeholder="---"
-                            className="w-full"
-                            isCompact={true}
                             disabled={['CLOSED', 'CERRADO'].includes(currentReport.status)}
                           />
                         </div>
-                        <button 
+                        <button
                           onClick={() => { setEditingPerson(p); setIsEditModalOpen(true); }}
                           className="flex-shrink-0 p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                           title="Editar"
@@ -2057,7 +2295,7 @@ function ReportTableView({ report, onBack, userData }) {
         {!loading && filtered.length === 0 && (
           <div className="py-20 text-center">
             <Search className="mx-auto text-slate-200 mb-4" size={48} />
-            <p className="text-slate-300 font-bold">No se encontraron resultados para "{search}"</p>
+            <p className="text-slate-300 font-semibold">No se encontraron resultados para "{search}"</p>
           </div>
         )}
       </div>
@@ -2078,22 +2316,22 @@ function ReportTableView({ report, onBack, userData }) {
 
         {isBulkModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setIsBulkModalOpen(false)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100"
             >
               <div className="p-10">
                 <div className="flex justify-between items-start mb-8">
                   <div>
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tighter">Acción Masiva</h3>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest mt-2">Aplicar a {selectedIds.size > 0 ? selectedIds.size : filtered.length} trabajadores</p>
+                    <h3 className="text-3xl font-bold text-slate-900 tracking-tighter">Acción Masiva</h3>
+                    <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mt-2">Aplicar a {selectedIds.size > 0 ? selectedIds.size : filtered.length} trabajadores</p>
                   </div>
                   <button onClick={() => setIsBulkModalOpen(false)} className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-slate-600 transition-all">
                     <X size={20} />
