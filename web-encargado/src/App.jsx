@@ -1670,7 +1670,6 @@ function AnalyticsDashboard({ userData, onBack }) {
     </motion.div>
   );
 }
-}
 function ReportTableView({ report, onBack, userData }) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
