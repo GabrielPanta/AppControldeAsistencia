@@ -1388,7 +1388,8 @@ function AnalyticsDashboard({ userData, onBack }) {
     attendanceRate: 0,
     zoneData: [],
     obsData: [],
-    trendData: []
+    trendData: [],
+    reportsCount: 0
   });
 
   useEffect(() => {
@@ -1401,7 +1402,7 @@ function AnalyticsDashboard({ userData, onBack }) {
           where('companyId', '==', userData.companyId)
         );
         const reportsSnap = await getDocs(reportsQ);
-        const reportsCount = reportsSnap.size;
+        const count = reportsSnap.size;
         const reports = reportsSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Analizando TODOS los datos históricos
@@ -1468,7 +1469,8 @@ function AnalyticsDashboard({ userData, onBack }) {
           attendanceRate: ((totalWorkers - noMarking) / totalWorkers * 100).toFixed(1),
           zoneData,
           obsData,
-          trendData: trend.reverse()
+          trendData: trend.reverse(),
+          reportsCount: count
         });
 
       } catch (e) {
@@ -1482,6 +1484,14 @@ function AnalyticsDashboard({ userData, onBack }) {
   }, [userData]);
 
   const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-40 gap-4">
+      <Loader2 className="animate-spin text-indigo-600" size={48} />
+      <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-4">Analizando Historial Global...</p>
+      <p className="text-slate-300 text-[8px] uppercase tracking-widest">Agregando datos de todos los reportes</p>
+    </div>
+  );
 
   return (
     <motion.div 
@@ -1498,7 +1508,7 @@ function AnalyticsDashboard({ userData, onBack }) {
             <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Business Intelligence</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-               Analizando {reportsCount} Reportes Históricos
+               Analizando {stats.reportsCount} Reportes Históricos
             </p>
           </div>
         </div>
