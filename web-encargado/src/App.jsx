@@ -1210,39 +1210,62 @@ function DashboardView({ userData, onSelectReport }) {
       {/* PANEL DERECHO: HISTORIAL */}
       <div className={String(userData?.role || '').toUpperCase() === 'ENCARGADO' ? 'lg:col-span-3' : 'lg:col-span-4'}>
         <div className="bg-white p-6 sm:p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/10 overflow-hidden">
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
-            <div className="flex-1">
-              <h3 className="font-bold text-2xl sm:text-3xl text-slate-900 tracking-tighter">Reportes</h3>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Empresa {userData?.companyId || '---'}</p>
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 mb-8 pb-8 border-b border-slate-50">
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="font-bold text-3xl text-slate-900 tracking-tighter">Reportes</h3>
+                <div className="px-2.5 py-1 bg-indigo-50 rounded-lg border border-indigo-100/50 flex items-center gap-2">
+                  <FileSpreadsheet size={12} className="text-indigo-600" />
+                  <span className="text-[10px] font-black text-indigo-700 tracking-widest">{filteredReports.length}</span>
+                </div>
+              </div>
+              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                 Empresa {userData?.companyId || '---'}
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto">
-              {/* Buscador */}
-              <div className="relative">
-                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                <input
-                  type="text"
-                  placeholder="Buscar reporte..."
-                  value={dashSearch}
-                  onChange={e => setDashSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-transparent focus:bg-white focus:border-blue-100 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none transition-all placeholder:text-slate-300"
+            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+              {/* Unified Action Bar Container */}
+              <div className="flex items-center gap-2 bg-slate-50/50 p-1 rounded-2xl border border-slate-100 overflow-hidden">
+                {/* Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input
+                    type="text"
+                    placeholder="BUSCAR..."
+                    value={dashSearch}
+                    onChange={e => setDashSearch(e.target.value)}
+                    className="pl-9 pr-4 py-2 bg-transparent border-none rounded-xl text-[9px] font-black uppercase tracking-[0.15em] outline-none transition-all placeholder:text-slate-300 w-full sm:w-48"
+                  />
+                </div>
+
+                <div className="w-px h-6 bg-slate-200/50 mx-1"></div>
+
+                {/* Filtro Mes */}
+                <CustomDropdown
+                  value={dashMonth}
+                  options={MONTHS}
+                  onChange={setDashMonth}
+                  placeholder="MES"
+                  isCompact={true}
+                  className="!bg-transparent !border-none !shadow-none min-w-[110px]"
+                />
+
+                <div className="w-px h-4 bg-slate-200/50 mx-1"></div>
+
+                {/* Filtro Año */}
+                <CustomDropdown
+                  value={dashYear}
+                  options={availableYears}
+                  onChange={setDashYear}
+                  placeholder="AÑO"
+                  isCompact={true}
+                  className="!bg-transparent !border-none !shadow-none min-w-[90px]"
                 />
               </div>
-
-              {/* Filtro Mes */}
-              <CustomDropdown
-                value={dashMonth}
-                options={MONTHS}
-                onChange={setDashMonth}
-                placeholder="Mes"
-                isCompact={true}
-                className="min-w-[120px]"
-              />
-
-              {/* Filtro Año */}
-              <CustomDropdown
-                value={dashYear}
-                options={availableYears}
+            </div>
+          </div>
                 onChange={setDashYear}
                 placeholder="Año"
                 isCompact={true}
